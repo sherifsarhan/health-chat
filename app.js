@@ -1,3 +1,4 @@
+// Author: Sherif Sarhan
 // This loads the environment variables from the .env file
 require('dotenv-extended').load();
 
