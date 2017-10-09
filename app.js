@@ -90,7 +90,7 @@ bot.dialog('askDoctorType', [
     function(session, args) {
         console.log('HERE');
         builder.Prompts.choice(session,'What type of doctor you would like to see?',
-            ['radiologist', 'psychiatrist', 'Cardiologist', 'Dermatologist'],
+            ['Radiologist', 'Psychiatrist', 'Cardiologist', 'Dermatologist'],
             { listStyle: builder.ListStyle.button });
     },
     function(session, args, next) {
@@ -131,22 +131,6 @@ bot.dialog('askReason', [
         session.endDialog();
     }
 ]);
-
-// bot.dialog('confirmAppointment', [
-//     function(session) {
-//         // session.send('Alright! Your appointment is scheduled with a ' + session.userData.doctorType.entity + 
-//         // ' for ' + session.userData.apptTime.entity +
-//         //     ' for the reason: ' + session.userData.apptReason.entity);
-//         builder.Prompts.text(session,'What is the reason for the appointment?');
-//     },
-//     function(session, args, next) {
-//         // reasonEntity = builder.EntityRecognizer.findEntity(results.response, 'AppointmentReason');
-//         // session.send(results.response);
-//         session.userData.apptReason = {};
-//         session.userData.apptReason.entity = args.response;
-//         session.endDialog();
-//     }
-// ]);
 
 bot.dialog('Help', function (session) {
     session.endDialog('Hi! Try asking me things like \'schedule an appointment\'');
