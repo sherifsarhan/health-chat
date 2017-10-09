@@ -49,7 +49,7 @@ bot.dialog('scheduleAppointment', [
         }
         else {
             // doctor type entity is detected, isolate doctor type through approximate matching
-            a = FuzzySet(['Radiologist', 'Psychologist']);
+            a = FuzzySet(['Radiologist', 'Psychologist', 'Cardiologist', 'Dermatologist']);
             session.userData.doctorType = {};
             session.userData.doctorType.entity = a.get(doctorEntity.entity)[0][1];
             // continue to next step
@@ -90,7 +90,7 @@ bot.dialog('askDoctorType', [
     function(session, args) {
         console.log('HERE');
         builder.Prompts.choice(session,'What type of doctor you would like to see?',
-            ['radiologist', 'psychiatrist'],
+            ['radiologist', 'psychiatrist', 'Cardiologist', 'Dermatologist'],
             { listStyle: builder.ListStyle.button });
     },
     function(session, args, next) {
