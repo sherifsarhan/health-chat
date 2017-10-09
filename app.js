@@ -83,7 +83,8 @@ bot.dialog('scheduleAppointment', [
         session.send("Thanks!");
     }
 ]).triggerAction({
-    matches: 'ScheduleAppointment'
+    matches: 'ScheduleAppointment',
+    intentThreshold: .5
 });
 
 bot.dialog('askDoctorType', [
@@ -135,7 +136,15 @@ bot.dialog('askReason', [
 bot.dialog('Help', function (session) {
     session.endDialog('Hi! Try asking me things like \'schedule an appointment\'');
 }).triggerAction({
-    matches: 'Help'
+    matches: 'Help',
+    intentThreshold: .5
+});
+
+bot.dialog('Cancel', function (session) {
+    session.endDialog('Appointment scheduling canceled.');
+}).triggerAction({
+    matches: 'Cancel',
+    intentThreshold: .5
 });
 
 // Spell Check
