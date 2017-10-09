@@ -37,7 +37,7 @@ var reasonEntity;
 bot.dialog('scheduleAppointment', [
     function (session, args, next) {
         session.userData = {};
-        session.send('Welcome to the Appointment Scheduler! We are analyzing your message: \'%s\'', session.message.text);
+        // session.send('Welcome to the Appointment Scheduler! We are analyzing your message: \'%s\'', session.message.text);
         // try extracting entities
         doctorEntity = builder.EntityRecognizer.findEntity(args.intent.entities, 'DoctorType');
         timeEntity = builder.EntityRecognizer.findEntity(args.intent.entities, 'builtin.datetimeV2.datetime');
