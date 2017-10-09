@@ -50,6 +50,11 @@ bot.dialog('scheduleAppointment', [
         else {
             // doctor type entity is detected, isolate doctor type through approximate matching
             a = FuzzySet(['Radiologist', 'Psychologist', 'Cardiologist', 'Dermatologist']);
+            // check if doctor user entered is in available set
+            if (!a.get(doctorEntity.entity) || a.get(doctorEntity.entity)[0][0] < .5) {
+                // not in available set. ask for doctor type
+                session.beginDialog('askDoctorType');
+            }
             session.userData.doctorType = {};
             session.userData.doctorType.entity = a.get(doctorEntity.entity)[0][1];
             // continue to next step
@@ -62,7 +67,7 @@ bot.dialog('scheduleAppointment', [
             session.beginDialog('askTime');
         }
         else {
-            session.userData.apptTime = timeEntity;            
+            session.userData.apptTime = timeEntity;
             next();
         }
     },
@@ -89,7 +94,6 @@ bot.dialog('scheduleAppointment', [
 
 bot.dialog('askDoctorType', [
     function(session, args) {
-        console.log('HERE');
         builder.Prompts.choice(session,'What type of doctor you would like to see?',
             ['Radiologist', 'Psychiatrist', 'Cardiologist', 'Dermatologist'],
             { listStyle: builder.ListStyle.button });
@@ -111,6 +115,7 @@ bot.dialog('askTime', [
     },
     function(session, args, next) {
         const time = args.response.entity;
+        console.log(builder.EntityRecognizer.parseTime(time));                   
         if(!time) session.replaceDialog('askTime', { reprompt: true });
         else {
             session.userData.apptTime = {}
