@@ -33,7 +33,9 @@ bot.recognizer(recognizer);
 var doctorEntity;
 var timeEntity;
 var reasonEntity;
-const dateOptions = { weekday: "long", year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" };
+const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+const dateOptionsShort = { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' };
+const timeOptionsShort = { hour: '2-digit', minute: '2-digit' };
 var doctorsSchedule = {
     Radiologist: {
         2017: {
@@ -80,31 +82,29 @@ bot.dialog('scheduleAppointment', [
             }
             session.userData.doctorType = {};
             session.userData.doctorType.entity = a.get(doctorEntity.entity)[0][1];
-            // continue to next step
             next();
         }
     },
-    function (session, results, next) {
+    function (session, args, next) {
         if (!timeEntity) {
             // time entity is not detected, ask for it
             session.beginDialog('askTime');
         }
         else {
-            session.userData.apptTime = timeEntity;
-            next();
+            session.beginDialog('askTime', { noprompt: true })
         }
     },
-    function (session, results, next) {
+    function (session, args, next) {
         if (!reasonEntity) {
             // reason entity is not detected, continue to next step
             session.beginDialog('askReason');
         }
         else {
             session.userData.apptReason = reasonEntity;
+            next();
         }
-        next();
     },
-    function (session, results, next) {
+    function (session) {
         session.send('Alright! Your appointment is scheduled with a ' + session.userData.doctorType.entity +
             ' for ' + session.userData.apptTime.entity +
             ' for the reason: ' + session.userData.apptReason.entity);
@@ -121,7 +121,7 @@ bot.dialog('askDoctorType', [
             ['Radiologist', 'Psychiatrist', 'Cardiologist', 'Dermatologist'],
             { listStyle: builder.ListStyle.button });
     },
-    function (session, args, next) {
+    function (session, args) {
         const doctorType = args.response.entity;
         if (!doctorType) session.replaceDialog('askDoctorType', { reprompt: true });
         else {
@@ -136,17 +136,25 @@ function addMinutes(date, minutes) {
     return new Date(date.getTime() + minutes * 60000);
 }
 
+function isTimeslotAvailable(session, dateObj) {
+    return (doctorsSchedule[session.userData.doctorType.entity][dateObj.getUTCFullYear()][dateObj.getUTCMonth()]
+    [dateObj.getUTCDate()][dateObj.getUTCHours()][dateObj.getUTCMinutes()] == 'available');
+}
+
 bot.dialog('askTime', [
-    function (session, args) {
+    function (session, args, next) {
         if (args && args.reprompt) {
             builder.Prompts.time(session, 'Please provide increments of 30 minutes only. (Examples: 1:30PM, 2:00PM, 2:30PM');
+        }
+        else if (args && args.noprompt) {
+            next({ noprompt: true });
         }
         else {
             builder.Prompts.time(session, 'When would you like to schedule the appointment? Provide increments of 30 minutes only. (Examples: 1:30PM, 2:00PM, 2:30PM');
         }
     },
-    function (session, args, next) {
-        const time = args.response.entity;
+    function (session, args) {
+        const time = args.noprompt ? timeEntity.entity : args.response.entity;
         if (!time) session.replaceDialog('askTime', { reprompt: true });
         else {
             // returns date object
@@ -155,19 +163,12 @@ bot.dialog('askTime', [
             // TODO: check if date is given but not time
 
             // check if date is available in doctor's calendar
-            // getUTCDate, Hours, Minutes
-            let appDate = {};
-            appDate.year = exactTime.getUTCFullYear();
-            appDate.month = exactTime.getUTCMonth();
-            appDate.date = exactTime.getUTCDate();
-            appDate.hours = exactTime.getUTCHours();
-            appDate.minutes = exactTime.getUTCMinutes();
+            let isAvailable = isTimeslotAvailable(session, exactTime);
 
             // check in doctorsSchedule
-            if (doctorsSchedule[session.userData.doctorType.entity][appDate.year][appDate.month]
-            [appDate.date][appDate.hours][appDate.minutes] == 'booked') {
+            if (!isAvailable) {
                 // try to find another time/day that works
-                console.log('time booked');
+                session.beginDialog('askDifferentTime', { requestedDate: exactTime });
             }
             else {
                 // add 30 mins to date
@@ -188,6 +189,27 @@ bot.dialog('askTime', [
                     session.endDialog();
                 }
             }
+        }
+    }
+]);
+
+bot.dialog('askDifferentTime', [
+    function (session, args) {
+        session.send('Sorry, that time slot is booked.');
+
+        builder.Prompts.choice(session, 'What would you like to do?',
+            [`View available time slots for ${args.requestedDate.toLocaleDateString('en-US', dateOptionsShort)}`,
+            `View available days with a ${args.requestedDate.toLocaleTimeString('en-US', timeOptionsShort)} time slot`,
+                'Enter a date and time range'
+            ],
+            { listStyle: builder.ListStyle.button });
+    },
+    function (session, args) {
+        if (args.response.index == 0) {
+            session.replaceDialog(session, { reprompt: true, index });
+        }
+        else {
+
         }
     }
 ]);
