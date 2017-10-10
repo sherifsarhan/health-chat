@@ -33,7 +33,7 @@ bot.recognizer(recognizer);
 var doctorEntity;
 var timeEntity;
 var reasonEntity;
-const dateOptions = { weekday: "long", year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit"};
+const dateOptions = { weekday: "long", year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" };
 
 bot.dialog('scheduleAppointment', [
     function (session, args, next) {
@@ -42,7 +42,7 @@ bot.dialog('scheduleAppointment', [
         // try extracting entities
         doctorEntity = builder.EntityRecognizer.findEntity(args.intent.entities, 'DoctorType');
         timeEntity = builder.EntityRecognizer.findEntity(args.intent.entities, 'builtin.datetimeV2.datetime');
-        reasonEntity = builder.EntityRecognizer.findEntity(args.intent.entities, 'AppointmentReason');        
+        reasonEntity = builder.EntityRecognizer.findEntity(args.intent.entities, 'AppointmentReason');
 
         if (!doctorEntity) {
             // doctor type entity is not detected, ask for it
@@ -72,69 +72,91 @@ bot.dialog('scheduleAppointment', [
             next();
         }
     },
-    function(session, results, next) {
+    function (session, results, next) {
         if (!reasonEntity) {
             // reason entity is not detected, continue to next step
             session.beginDialog('askReason');
         }
         else {
-            session.userData.apptReason = reasonEntity;            
+            session.userData.apptReason = reasonEntity;
         }
         next();
     },
-    function(session, results, next) {
-        session.send('Alright! Your appointment is scheduled with a ' + session.userData.doctorType.entity + 
-        ' for ' + session.userData.apptTime.entity +
+    function (session, results, next) {
+        session.send('Alright! Your appointment is scheduled with a ' + session.userData.doctorType.entity +
+            ' for ' + session.userData.apptTime.entity +
             ' for the reason: ' + session.userData.apptReason.entity);
         session.send("Thanks!");
     }
 ]).triggerAction({
     matches: 'ScheduleAppointment',
-    intentThreshold: .5
+    intentThreshold: .65
 });
 
 bot.dialog('askDoctorType', [
-    function(session, args) {
-        builder.Prompts.choice(session,'What type of doctor you would like to see?',
+    function (session, args) {
+        builder.Prompts.choice(session, 'What type of doctor you would like to see?',
             ['Radiologist', 'Psychiatrist', 'Cardiologist', 'Dermatologist'],
             { listStyle: builder.ListStyle.button });
     },
-    function(session, args, next) {
+    function (session, args, next) {
         const doctorType = args.response.entity;
-        if(!doctorType) session.replaceDialog('askDoctorType', { reprompt: true });
+        if (!doctorType) session.replaceDialog('askDoctorType', { reprompt: true });
         else {
             session.userData.doctorType = {};
             session.userData.doctorType.entity = doctorType;
-            session.endDialog();      
-        }  
-    }
-]);
-
-bot.dialog('askTime', [
-    function(session, args) {
-        builder.Prompts.time(session,'When would you like to schedule the appointment?');
-    },
-    function(session, args, next) {
-        const time = args.response.entity;
-        if(!time) session.replaceDialog('askTime', { reprompt: true });
-        else {
-            // returns date object
-            let exactTime = builder.EntityRecognizer.parseTime(time);
-            // get date string. ex: Wednesday, October 11, 2017, 2:00 PM
-            exactTime = exactTime.toLocaleTimeString("en-us", dateOptions);
-
-            session.userData.apptTime = {}
-            session.userData.apptTime.entity = exactTime;
             session.endDialog();
         }
     }
 ]);
 
-bot.dialog('askReason', [
-    function(session) {
-        builder.Prompts.text(session,'What is the reason for the appointment?');
+function addMinutes(date, minutes) {
+    return new Date(date.getTime() + minutes * 60000);
+}
+
+bot.dialog('askTime', [
+    function (session, args) {
+        if (args && args.reprompt) {
+            builder.Prompts.time(session, 'Please provide increments of 30 minutes only. (Examples: 1:30PM, 2:00PM, 2:30PM');            
+        }
+        else {
+            builder.Prompts.time(session, 'When would you like to schedule the appointment? Provide increments of 30 minutes only. (Examples: 1:30PM, 2:00PM, 2:30PM');            
+        }
     },
-    function(session, results) {
+    function (session, args, next) {
+        const time = args.response.entity;
+        if (!time) session.replaceDialog('askTime', { reprompt: true });
+        else {
+            // returns date object
+            let exactTime = builder.EntityRecognizer.parseTime(time);
+
+            // check if date is available in doctor's calendar
+            // add 30 mins to date
+            // only accept if minutes == 0 or minutes == 30
+            let tempDate = addMinutes(exactTime, 30);
+            let tempMinutes = tempDate.getMinutes();
+            // reprompt if date is not increment of 30
+            if (!(tempMinutes == 0 || tempMinutes == 30)) {
+                session.replaceDialog('askTime', { reprompt: true });
+            }
+
+            else {
+                // get date string. ex: Wednesday, October 11, 2017, 2:00 PM
+                exactTime = exactTime.toLocaleTimeString("en-us", dateOptions);
+
+                session.userData.apptTime = {}
+                session.userData.apptTime.entity = exactTime;
+                session.endDialog();
+            }
+        }
+    }
+]);
+
+bot.dialog('askReason', [
+    function (session) {
+        builder.Prompts.text(session, 'What is the reason for the appointment?');
+    },
+    function (session, results) {
         session.userData.apptReason = {};
         session.userData.apptReason.entity = results.response;
         session.endDialog();
@@ -145,14 +167,14 @@ bot.dialog('Help', function (session) {
     session.endDialog('Hi! Try asking me things like \'schedule an appointment\'');
 }).triggerAction({
     matches: ['Hello', 'Help'],
-    intentThreshold: .5
+    intentThreshold: .65
 });
 
 bot.dialog('Cancel', function (session) {
     session.endDialog('Appointment scheduling canceled.');
 }).triggerAction({
     matches: 'Cancel',
-    intentThreshold: .5
+    intentThreshold: .65
 });
 
 // Spell Check
