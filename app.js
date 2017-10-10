@@ -34,6 +34,28 @@ var doctorEntity;
 var timeEntity;
 var reasonEntity;
 const dateOptions = { weekday: "long", year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" };
+var doctorsSchedule = {
+    Radiologist: {
+        2017: {
+            9: {
+                11: {
+                    16: {
+                        0: 'available',
+                        30: 'available'
+                    },
+                    17: {
+                        0: 'available',
+                        30: 'available'
+                    },
+                    18: {
+                        0: 'booked',
+                        30: 'available'
+                    }
+                }
+            }
+        }
+    }
+}
 
 bot.dialog('scheduleAppointment', [
     function (session, args, next) {
@@ -117,10 +139,10 @@ function addMinutes(date, minutes) {
 bot.dialog('askTime', [
     function (session, args) {
         if (args && args.reprompt) {
-            builder.Prompts.time(session, 'Please provide increments of 30 minutes only. (Examples: 1:30PM, 2:00PM, 2:30PM');            
+            builder.Prompts.time(session, 'Please provide increments of 30 minutes only. (Examples: 1:30PM, 2:00PM, 2:30PM');
         }
         else {
-            builder.Prompts.time(session, 'When would you like to schedule the appointment? Provide increments of 30 minutes only. (Examples: 1:30PM, 2:00PM, 2:30PM');            
+            builder.Prompts.time(session, 'When would you like to schedule the appointment? Provide increments of 30 minutes only. (Examples: 1:30PM, 2:00PM, 2:30PM');
         }
     },
     function (session, args, next) {
@@ -133,22 +155,38 @@ bot.dialog('askTime', [
             // TODO: check if date is given but not time
 
             // check if date is available in doctor's calendar
-            // add 30 mins to date
-            // only accept if minutes == 0 or minutes == 30
-            let tempDate = addMinutes(exactTime, 30);
-            let tempMinutes = tempDate.getMinutes();
-            // reprompt if date is not increment of 30
-            if (!(tempMinutes == 0 || tempMinutes == 30)) {
-                session.replaceDialog('askTime', { reprompt: true });
+            // getUTCDate, Hours, Minutes
+            let appDate = {};
+            appDate.year = exactTime.getUTCFullYear();
+            appDate.month = exactTime.getUTCMonth();
+            appDate.date = exactTime.getUTCDate();
+            appDate.hours = exactTime.getUTCHours();
+            appDate.minutes = exactTime.getUTCMinutes();
+
+            // check in doctorsSchedule
+            if (doctorsSchedule[session.userData.doctorType.entity][appDate.year][appDate.month]
+            [appDate.date][appDate.hours][appDate.minutes] == 'booked') {
+                // try to find another time/day that works
+                console.log('time booked');
             }
-
             else {
-                // get date string. ex: Wednesday, October 11, 2017, 2:00 PM
-                exactTime = exactTime.toLocaleTimeString("en-us", dateOptions);
+                // add 30 mins to date
+                // only accept if minutes == 0 or minutes == 30
+                let tempDate = addMinutes(exactTime, 30);
+                let tempMinutes = tempDate.getMinutes();
+                // reprompt if date is not increment of 30
+                if (!(tempMinutes == 0 || tempMinutes == 30)) {
+                    session.replaceDialog('askTime', { reprompt: true });
+                }
 
-                session.userData.apptTime = {}
-                session.userData.apptTime.entity = exactTime;
-                session.endDialog();
+                else {
+                    // get date string. ex: Wednesday, October 11, 2017, 2:00 PM
+                    exactTime = exactTime.toLocaleTimeString("en-us", dateOptions);
+
+                    session.userData.apptTime = {}
+                    session.userData.apptTime.entity = exactTime;
+                    session.endDialog();
+                }
             }
         }
     }
