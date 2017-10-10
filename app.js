@@ -143,7 +143,7 @@ function isTimeslotAvailable(session, dateObj) {
     // return (doctorsSchedule[session.userData.doctorType.entity][dateObj.getUTCFullYear()][dateObj.getUTCMonth()]
     // [dateObj.getUTCDate()][dateObj.getUTCHours()][dateObj.getUTCMinutes()] == 'available');
     switchMe = !switchMe;
-    return switchMe;
+    return true;
 }
 
 bot.dialog('askTime', [
