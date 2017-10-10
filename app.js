@@ -106,8 +106,7 @@ bot.dialog('scheduleAppointment', [
     },
     function (session) {
         session.send('Alright! Your appointment is scheduled with a ' + session.userData.doctorType.entity +
-            ' for ' + session.userData.apptTime.entity +
-            ' for the reason: ' + session.userData.apptReason.entity);
+            ' for ' + session.userData.apptTime.entity);
         session.send("Thanks!");
     }
 ]).triggerAction({
