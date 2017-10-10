@@ -33,6 +33,7 @@ bot.recognizer(recognizer);
 var doctorEntity;
 var timeEntity;
 var reasonEntity;
+const dateOptions = { weekday: "long", year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit"};
 
 bot.dialog('scheduleAppointment', [
     function (session, args, next) {
@@ -115,11 +116,15 @@ bot.dialog('askTime', [
     },
     function(session, args, next) {
         const time = args.response.entity;
-        console.log(builder.EntityRecognizer.parseTime(time));                   
         if(!time) session.replaceDialog('askTime', { reprompt: true });
         else {
+            // returns date object
+            let exactTime = builder.EntityRecognizer.parseTime(time);
+            // get date string. ex: Wednesday, October 11, 2017, 2:00 PM
+            exactTime = exactTime.toLocaleTimeString("en-us", dateOptions);
+
             session.userData.apptTime = {}
-            session.userData.apptTime.entity = time;
+            session.userData.apptTime.entity = exactTime;
             session.endDialog();
         }
     }
@@ -130,8 +135,6 @@ bot.dialog('askReason', [
         builder.Prompts.text(session,'What is the reason for the appointment?');
     },
     function(session, results) {
-        // reasonEntity = builder.EntityRecognizer.findEntity(results.response, 'AppointmentReason');
-        // session.send(results.response);
         session.userData.apptReason = {};
         session.userData.apptReason.entity = results.response;
         session.endDialog();
