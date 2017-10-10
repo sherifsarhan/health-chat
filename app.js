@@ -141,7 +141,7 @@ bot.dialog('askReason', [
 bot.dialog('Help', function (session) {
     session.endDialog('Hi! Try asking me things like \'schedule an appointment\'');
 }).triggerAction({
-    matches: 'Help',
+    matches: ['Hello', 'Help'],
     intentThreshold: .5
 });
 
