@@ -130,6 +130,8 @@ bot.dialog('askTime', [
             // returns date object
             let exactTime = builder.EntityRecognizer.parseTime(time);
 
+            // TODO: check if date is given but not time
+
             // check if date is available in doctor's calendar
             // add 30 mins to date
             // only accept if minutes == 0 or minutes == 30
