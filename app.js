@@ -171,7 +171,7 @@ bot.dialog('askTime', [
             }
             else {
                 // add 30 mins to date
-                // only accept if minutes == 0 or minutes == 30
+                // only accept if minutes == 0 or minutes === 30
                 let tempDate = addMinutes(exactTime, 30);
                 let tempMinutes = tempDate.getMinutes();
                 // reprompt if date is not increment of 30
