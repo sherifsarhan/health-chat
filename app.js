@@ -30,6 +30,7 @@ var bot = new builder.UniversalBot(connector, function (session) {
 var recognizer = new builder.LuisRecognizer(process.env.LUIS_MODEL_URL);
 bot.recognizer(recognizer);
 
+var switchMe = true;
 var doctorEntity;
 var timeEntity;
 var reasonEntity;
@@ -41,6 +42,10 @@ var doctorsSchedule = {
         2017: {
             9: {
                 11: {
+                    14: {
+                        0: 'available',
+                        30: 'available'
+                    },
                     16: {
                         0: 'available',
                         30: 'available'
@@ -134,10 +139,11 @@ bot.dialog('askDoctorType', [
 function addMinutes(date, minutes) {
     return new Date(date.getTime() + minutes * 60000);
 }
-
 function isTimeslotAvailable(session, dateObj) {
-    return (doctorsSchedule[session.userData.doctorType.entity][dateObj.getUTCFullYear()][dateObj.getUTCMonth()]
-    [dateObj.getUTCDate()][dateObj.getUTCHours()][dateObj.getUTCMinutes()] == 'available');
+    // return (doctorsSchedule[session.userData.doctorType.entity][dateObj.getUTCFullYear()][dateObj.getUTCMonth()]
+    // [dateObj.getUTCDate()][dateObj.getUTCHours()][dateObj.getUTCMinutes()] == 'available');
+    switchMe = !switchMe;
+    return switchMe;
 }
 
 bot.dialog('askTime', [
