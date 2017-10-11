@@ -165,34 +165,30 @@ bot.dialog('askTime', [
 
             // TODO: check if date is given but not time
 
-            // check if date is available in doctor's calendar
-            // let isAvailable = isTimeslotAvailable(session, exactTime);
-            let isAvailable = true;
-            console.log(exactTime.getUTCHours());
+            console.log('month: ' + exactTime.getUTCMonth());
+            console.log('day: ' + exactTime.getUTCDate());
+            console.log('hours: ' + exactTime.getUTCHours());
 
-            // check in doctorsSchedule
+            // add 30 mins to date
+            // only accept if minutes == 0 or minutes === 30
+            // reprompt if date is not increment of 30
+            if (!(exactTime.getMinutes() == 0 || exactTime.getMinutes() == 30)) {
+                session.replaceDialog('askTime', { reprompt: true });
+            }
+
+            // check if date is available in doctor's calendar
+            let isAvailable = isTimeslotAvailable(session, exactTime);
             if (!isAvailable) {
                 // try to find another time/day that works
                 session.beginDialog('askDifferentTime', { requestedDate: exactTime });
             }
-            else {
-                // add 30 mins to date
-                // only accept if minutes == 0 or minutes === 30
-                let tempDate = addMinutes(exactTime, 30);
-                let tempMinutes = tempDate.getMinutes();
-                // reprompt if date is not increment of 30
-                if (!(tempMinutes == 0 || tempMinutes == 30)) {
-                    session.replaceDialog('askTime', { reprompt: true });
-                }
+            else {       
+                // get date string. ex: Wednesday, October 11, 2017, 2:00 PM
+                exactTime = exactTime.toLocaleTimeString("en-us", dateOptions);
 
-                else {
-                    // get date string. ex: Wednesday, October 11, 2017, 2:00 PM
-                    exactTime = exactTime.toLocaleTimeString("en-us", dateOptions);
-
-                    session.userData.apptTime = {}
-                    session.userData.apptTime.entity = exactTime;
-                    session.endDialog();
-                }
+                session.userData.apptTime = {}
+                session.userData.apptTime.entity = exactTime;
+                session.endDialog();
             }
         }
     }
