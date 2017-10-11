@@ -140,8 +140,8 @@ function addMinutes(date, minutes) {
 }
 
 function isTimeslotAvailable(session, dateObj) {
-    return (doctorsSchedule[session.userData.doctorType.entity][dateObj.getUTCFullYear()][dateObj.getUTCMonth()]
-    [dateObj.getUTCDate()][dateObj.getUTCHours()][dateObj.getUTCMinutes()] == 'available');
+    return (doctorsSchedule[session.userData.doctorType.entity][dateObj.getFullYear()][dateObj.getMonth()]
+    [dateObj.getDate()][dateObj.getHours()][dateObj.getMinutes()] == 'available');
 }
 
 bot.dialog('askTime', [
@@ -164,10 +164,6 @@ bot.dialog('askTime', [
             let exactTime = builder.EntityRecognizer.parseTime(time);
 
             // TODO: check if date is given but not time
-
-            console.log('month: ' + exactTime.getMonth());
-            console.log('day: ' + exactTime.getDate());
-            console.log('hours: ' + exactTime.getHours());
 
             // add 30 mins to date
             // only accept if minutes == 0 or minutes === 30
