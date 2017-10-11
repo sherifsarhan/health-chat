@@ -165,9 +165,9 @@ bot.dialog('askTime', [
 
             // TODO: check if date is given but not time
 
-            console.log('month: ' + exactTime.getUTCMonth());
-            console.log('day: ' + exactTime.getUTCDate());
-            console.log('hours: ' + exactTime.getUTCHours());
+            console.log('month: ' + exactTime.getMonth());
+            console.log('day: ' + exactTime.getDate());
+            console.log('hours: ' + exactTime.getHours());
 
             // add 30 mins to date
             // only accept if minutes == 0 or minutes === 30
