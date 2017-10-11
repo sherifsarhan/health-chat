@@ -30,7 +30,6 @@ var bot = new builder.UniversalBot(connector, function (session) {
 var recognizer = new builder.LuisRecognizer(process.env.LUIS_MODEL_URL);
 bot.recognizer(recognizer);
 
-var switchMe = true;
 var doctorEntity;
 var timeEntity;
 var reasonEntity;
@@ -41,7 +40,7 @@ var doctorsSchedule = {
     Radiologist: {
         2017: {
             9: {
-                11: {
+                12: {
                     14: {
                         0: 'available',
                         30: 'available'
@@ -139,11 +138,10 @@ bot.dialog('askDoctorType', [
 function addMinutes(date, minutes) {
     return new Date(date.getTime() + minutes * 60000);
 }
+
 function isTimeslotAvailable(session, dateObj) {
-    // return (doctorsSchedule[session.userData.doctorType.entity][dateObj.getUTCFullYear()][dateObj.getUTCMonth()]
-    // [dateObj.getUTCDate()][dateObj.getUTCHours()][dateObj.getUTCMinutes()] == 'available');
-    switchMe = !switchMe;
-    return true;
+    return (doctorsSchedule[session.userData.doctorType.entity][dateObj.getUTCFullYear()][dateObj.getUTCMonth()]
+    [dateObj.getUTCDate()][dateObj.getUTCHours()][dateObj.getUTCMinutes()] == 'available');
 }
 
 bot.dialog('askTime', [
@@ -168,7 +166,9 @@ bot.dialog('askTime', [
             // TODO: check if date is given but not time
 
             // check if date is available in doctor's calendar
-            let isAvailable = isTimeslotAvailable(session, exactTime);
+            // let isAvailable = isTimeslotAvailable(session, exactTime);
+            let isAvailable = true;
+            console.log(exactTime.getUTCHours());
 
             // check in doctorsSchedule
             if (!isAvailable) {
