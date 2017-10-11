@@ -204,9 +204,9 @@ bot.dialog('askDifferentTime', [
         session.send('Sorry, that time slot is booked.');
 
         builder.Prompts.choice(session, 'What would you like to do?',
-            [`View times for ${args.requestedDate.toLocaleDateString('en-US', dateOptionsShort)}`,
+            [`View times for ${args.requestedDate.toDateString()}`,
             `View days with ${args.requestedDate.toLocaleTimeString('en-US', timeOptionsShort)}`,
-                'Enter a date & time range'
+                'Enter date&time range'
             ],
             { listStyle: builder.ListStyle.button });
     },
