@@ -42,6 +42,10 @@ var doctorsSchedule = {
             9: {
                 12: {
                     14: {
+                        0: 'booked',
+                        30: 'available'
+                    },
+                    15: {
                         0: 'available',
                         30: 'available'
                     },
@@ -140,8 +144,13 @@ function addMinutes(date, minutes) {
 }
 
 function isTimeslotAvailable(session, dateObj) {
-    return (doctorsSchedule[session.userData.doctorType.entity][dateObj.getFullYear()][dateObj.getMonth()]
-    [dateObj.getDate()][dateObj.getHours()][dateObj.getMinutes()] == 'available');
+    let apptDatePath = doctorsSchedule[session.userData.doctorType.entity][dateObj.getFullYear()][dateObj.getMonth()]
+    [dateObj.getDate()][dateObj.getHours()];
+    if (apptDatePath[dateObj.getMinutes()] == 'available') {
+        apptDatePath[dateObj.getMinutes()] = 'booked';
+        return true; 
+    }
+    return false;
 }
 
 bot.dialog('askTime', [
