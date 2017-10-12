@@ -117,7 +117,7 @@ bot.dialog('scheduleAppointment', [
     },
     function (session) {
         session.send('Alright! Your appointment is scheduled with a ' + session.userData.doctorType +
-            ' for ' + session.userData.apptTime.entity);
+            ' for ' + session.userData.apptTime);
         session.send("Thanks!");
     }
 ]).triggerAction({
@@ -150,7 +150,7 @@ function isTimeslotAvailable(session, requestedDate) {
     [requestedDate.getDate()][requestedDate.getHours()];
     if (apptDatePath[requestedDate.getMinutes()] == 'available') {
         apptDatePath[requestedDate.getMinutes()] = 'booked';
-        return true; 
+        return true;
     }
     return false;
 }
@@ -203,13 +203,13 @@ bot.dialog('askTime', [
             }
 
             // check if date is available in doctor's calendar
-            let isAvailable = isTimeslotAvailable(session, exactTime);
-            if (!isAvailable) {
+            if (!isTimeslotAvailable(session, exactTime)) {
                 // try to find another time/day that works
+                // since the requested date is not available
                 session.userData.requestedDate = exactTime;
                 session.replaceDialog('timeslotUnavailable');
             }
-            else {       
+            else {
                 // get date string. ex: Wednesday, October 11, 2017, 2:00 PM
                 exactTime = exactTime.toLocaleTimeString("en-us", dateOptions);
 
@@ -223,10 +223,10 @@ bot.dialog('askTime', [
 bot.dialog('timeslotUnavailable', [
     function (session, args) {
         session.send('Sorry, that time slot is booked.');
-        
+
         builder.Prompts.choice(session, `Would you like to view available times for ${session.userData.requestedDate.toLocaleDateString('en-US', dateOptionsShort)} or pick a different day?`,
             [`View times for ${session.userData.requestedDate.toLocaleDateString('en-US', dateOptionsShort)}`,
-            'Pick a different day'
+                'Pick a different day'
             ],
             { listStyle: builder.ListStyle.button });
     },
@@ -235,11 +235,11 @@ bot.dialog('timeslotUnavailable', [
         let date = new Date(session.userData.requestedDate);
         session.userData.requestedDate = date;
         if (args.response.index == 0) {
-            let availableTimeslots = getAvailableTimeslots(session);
-            session.replaceDialog('askDifferentTimes', { availableTimeslots })
+            session.userData.availableTimeslots = getAvailableTimeslots(session);
+            session.replaceDialog('askDifferentTimes')
         }
         else if (args.response.index == 1) {
-            
+
         }
     }
 ]);
@@ -247,7 +247,7 @@ bot.dialog('timeslotUnavailable', [
 bot.dialog('askDifferentTimes', [
     function (session, args) {
         let timeslotStrings = []
-        args.availableTimeslots.forEach((timeslot) => timeslotStrings.push(timeslot.toLocaleTimeString('en-US', timeOptionsShort)));
+        session.userData.availableTimeslots.forEach((timeslot) => timeslotStrings.push(timeslot.toLocaleTimeString('en-US', timeOptionsShort)));
 
         builder.Prompts.choice(session, 'Which one of these times would you prefer?',
             timeslotStrings,
@@ -256,9 +256,17 @@ bot.dialog('askDifferentTimes', [
     function (session, args) {
         if (args.response.index == 0) {
             // mark it as booked
+            let exactTime = new Date(session.userData.availableTimeslots[args.response.index]);
+            isTimeslotAvailable(session, exactTime);
+            // get date string. ex: Wednesday, October 11, 2017, 2:00 PM
+            exactTime = exactTime.toLocaleTimeString("en-us", dateOptions);
+
+            session.userData.apptTime = exactTime;
+            session.endDialog();
+
         }
         else if (args.response.index == 1) {
-            
+
         }
     }
 ]);
