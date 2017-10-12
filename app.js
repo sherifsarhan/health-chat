@@ -41,25 +41,29 @@ var doctorsSchedule = {
         2017: {
             9: {
                 12: {
+                    9: {
+                        0: 'booked',
+                        30: 'available'
+                    },
+                    10: {
+                        0: 'available',
+                        0: 'available'
+                    },
                     14: {
                         0: 'booked',
                         30: 'available'
                     },
                     15: {
-                        0: 'available',
-                        30: 'available'
-                    },
-                    16: {
-                        0: 'available',
-                        30: 'available'
-                    },
-                    17: {
-                        0: 'available',
-                        30: 'available'
-                    },
-                    18: {
+                        0: 'available'
+                    }
+                },
+                13: {
+                    14: {
                         0: 'booked',
                         30: 'available'
+                    },
+                    15: {
+                        0: 'available'
                     }
                 }
             }
@@ -72,11 +76,11 @@ bot.dialog('scheduleAppointment', [
         session.userData = {};
         // session.send('Welcome to the Appointment Scheduler! We are analyzing your message: \'%s\'', session.message.text);
         // try extracting entities
-        doctorEntity = builder.EntityRecognizer.findEntity(args.intent.entities, 'DoctorType');
-        timeEntity = builder.EntityRecognizer.findEntity(args.intent.entities, 'builtin.datetimeV2.datetime');
-        reasonEntity = builder.EntityRecognizer.findEntity(args.intent.entities, 'AppointmentReason');
+        session.userData.doctorEntity = builder.EntityRecognizer.findEntity(args.intent.entities, 'DoctorType');
+        session.userData.timeEntity = builder.EntityRecognizer.findEntity(args.intent.entities, 'builtin.datetimeV2.datetime');
+        session.userData.reasonEntity = builder.EntityRecognizer.findEntity(args.intent.entities, 'AppointmentReason');
 
-        if (!doctorEntity) {
+        if (!session.userData.doctorEntity) {
             // doctor type entity is not detected, ask for it
             session.beginDialog('askDoctorType');
         }
@@ -84,17 +88,16 @@ bot.dialog('scheduleAppointment', [
             // doctor type entity is detected, isolate doctor type through approximate matching
             a = FuzzySet(['Radiologist', 'Psychologist', 'Cardiologist', 'Dermatologist']);
             // check if doctor user entered is in available set
-            if (!a.get(doctorEntity.entity) || a.get(doctorEntity.entity)[0][0] < .5) {
+            if (!a.get(session.userData.doctorEntity.entity) || a.get(session.userData.doctorEntity.entity)[0][0] < .5) {
                 // not in available set. ask for doctor type
                 session.beginDialog('askDoctorType');
             }
-            session.userData.doctorType = {};
-            session.userData.doctorType.entity = a.get(doctorEntity.entity)[0][1];
+            session.userData.doctorType = a.get(session.userData.doctorEntity.entity)[0][1];
             next();
         }
     },
     function (session, args, next) {
-        if (!timeEntity) {
+        if (!session.userData.timeEntity) {
             // time entity is not detected, ask for it
             session.beginDialog('askTime');
         }
@@ -103,17 +106,17 @@ bot.dialog('scheduleAppointment', [
         }
     },
     function (session, args, next) {
-        if (!reasonEntity) {
+        if (!session.userData.reasonEntity) {
             // reason entity is not detected, continue to next step
             session.beginDialog('askReason');
         }
         else {
-            session.userData.apptReason = reasonEntity;
+            session.userData.apptReason = session.userData.reasonEntity;
             next();
         }
     },
     function (session) {
-        session.send('Alright! Your appointment is scheduled with a ' + session.userData.doctorType.entity +
+        session.send('Alright! Your appointment is scheduled with a ' + session.userData.doctorType +
             ' for ' + session.userData.apptTime.entity);
         session.send("Thanks!");
     }
@@ -132,8 +135,7 @@ bot.dialog('askDoctorType', [
         const doctorType = args.response.entity;
         if (!doctorType) session.replaceDialog('askDoctorType', { reprompt: true });
         else {
-            session.userData.doctorType = {};
-            session.userData.doctorType.entity = doctorType;
+            session.userData.doctorType = doctorType;
             session.endDialog();
         }
     }
@@ -143,14 +145,33 @@ function addMinutes(date, minutes) {
     return new Date(date.getTime() + minutes * 60000);
 }
 
-function isTimeslotAvailable(session, dateObj) {
-    let apptDatePath = doctorsSchedule[session.userData.doctorType.entity][dateObj.getFullYear()][dateObj.getMonth()]
-    [dateObj.getDate()][dateObj.getHours()];
-    if (apptDatePath[dateObj.getMinutes()] == 'available') {
-        apptDatePath[dateObj.getMinutes()] = 'booked';
+function isTimeslotAvailable(session, requestedDate) {
+    let apptDatePath = doctorsSchedule[session.userData.doctorType][requestedDate.getFullYear()][requestedDate.getMonth()]
+    [requestedDate.getDate()][requestedDate.getHours()];
+    if (apptDatePath[requestedDate.getMinutes()] == 'available') {
+        apptDatePath[requestedDate.getMinutes()] = 'booked';
         return true; 
     }
     return false;
+}
+
+function getAvailableTimeslots(session) {
+    let requestedDate = session.userData.requestedDate;
+    let apptHours = doctorsSchedule[session.userData.doctorType][requestedDate.getFullYear()][requestedDate.getMonth()]
+    [requestedDate.getDate()];
+    let availableTimeslots = [];
+    for (let hour in apptHours) {
+        if (apptHours.hasOwnProperty(hour)) {
+            let minutes = apptHours[hour];
+            for (let minute in minutes) {
+                if (apptHours[hour][minute] == 'available') {
+                    let timeslot = new Date(requestedDate.getFullYear(), requestedDate.getMonth(), requestedDate.getDate(), hour, minute);
+                    availableTimeslots.push(timeslot);
+                }
+            }
+        }
+    }
+    return availableTimeslots;
 }
 
 bot.dialog('askTime', [
@@ -166,7 +187,7 @@ bot.dialog('askTime', [
         }
     },
     function (session, args) {
-        const time = args.noprompt ? timeEntity.entity : args.response.entity;
+        const time = args.noprompt ? session.userData.timeEntity.entity : args.response.entity;
         if (!time) session.replaceDialog('askTime', { reprompt: true });
         else {
             // returns date object
@@ -185,37 +206,59 @@ bot.dialog('askTime', [
             let isAvailable = isTimeslotAvailable(session, exactTime);
             if (!isAvailable) {
                 // try to find another time/day that works
-                session.beginDialog('askDifferentTime', { requestedDate: exactTime });
+                session.userData.requestedDate = exactTime;
+                session.replaceDialog('timeslotUnavailable');
             }
             else {       
                 // get date string. ex: Wednesday, October 11, 2017, 2:00 PM
                 exactTime = exactTime.toLocaleTimeString("en-us", dateOptions);
 
-                session.userData.apptTime = {}
-                session.userData.apptTime.entity = exactTime;
+                session.userData.apptTime = exactTime;
                 session.endDialog();
             }
         }
     }
 ]);
 
-bot.dialog('askDifferentTime', [
+bot.dialog('timeslotUnavailable', [
     function (session, args) {
         session.send('Sorry, that time slot is booked.');
-
-        builder.Prompts.choice(session, 'What would you like to do?',
-            [`View times for ${args.requestedDate.toDateString()}`,
-            `View days with ${args.requestedDate.toLocaleTimeString('en-US', timeOptionsShort)}`,
-                'Enter date&time range'
+        
+        builder.Prompts.choice(session, `Would you like to view available times for ${session.userData.requestedDate.toLocaleDateString('en-US', dateOptionsShort)} or pick a different day?`,
+            [`View times for ${session.userData.requestedDate.toLocaleDateString('en-US', dateOptionsShort)}`,
+            'Pick a different day'
             ],
             { listStyle: builder.ListStyle.button });
     },
     function (session, args) {
+        // need to create new date object because the one in userData got serialized
+        let date = new Date(session.userData.requestedDate);
+        session.userData.requestedDate = date;
         if (args.response.index == 0) {
-            session.replaceDialog(session, { reprompt: true, index });
+            let availableTimeslots = getAvailableTimeslots(session);
+            session.replaceDialog('askDifferentTimes', { availableTimeslots })
         }
-        else {
+        else if (args.response.index == 1) {
+            
+        }
+    }
+]);
 
+bot.dialog('askDifferentTimes', [
+    function (session, args) {
+        let timeslotStrings = []
+        args.availableTimeslots.forEach((timeslot) => timeslotStrings.push(timeslot.toLocaleTimeString('en-US', timeOptionsShort)));
+
+        builder.Prompts.choice(session, 'Which one of these times would you prefer?',
+            timeslotStrings,
+            { listStyle: builder.ListStyle.button });
+    },
+    function (session, args) {
+        if (args.response.index == 0) {
+            // mark it as booked
+        }
+        else if (args.response.index == 1) {
+            
         }
     }
 ]);
@@ -225,8 +268,7 @@ bot.dialog('askReason', [
         builder.Prompts.text(session, 'What is the reason for the appointment?');
     },
     function (session, results) {
-        session.userData.apptReason = {};
-        session.userData.apptReason.entity = results.response;
+        session.userData.apptReason = results.response;
         session.endDialog();
     }
 ]);
