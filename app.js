@@ -236,25 +236,35 @@ bot.dialog('timeslotUnavailable', [
         session.userData.requestedDate = date;
         if (args.response.index == 0) {
             session.userData.availableTimeslots = getAvailableTimeslots(session);
-            session.replaceDialog('askDifferentTimes')
+            session.replaceDialog('askDifferentTimes');
         }
         else if (args.response.index == 1) {
-
+            session.replaceDialog('askDifferentDay');
         }
     }
 ]);
 
 bot.dialog('askDifferentTimes', [
     function (session, args) {
-        let timeslotStrings = []
-        session.userData.availableTimeslots.forEach((timeslot) => timeslotStrings.push(timeslot.toLocaleTimeString('en-US', timeOptionsShort)));
+        if (args && args.reprompt) {
+            session.send('Please choose from the available options');
+        }
+        else {
+            let timeslotStrings = []
+            session.userData.availableTimeslots.forEach((timeslot) => timeslotStrings.push(timeslot.toLocaleTimeString('en-US', timeOptionsShort)));
+            timeslotStrings.push('Pick a different day');
 
-        builder.Prompts.choice(session, 'Which one of these times would you prefer?',
-            timeslotStrings,
-            { listStyle: builder.ListStyle.button });
+            builder.Prompts.choice(session, 'Which one of these times would you prefer?',
+                timeslotStrings,
+                { listStyle: builder.ListStyle.button });
+        }
     },
     function (session, args) {
-        if (args.response.index == 0) {
+        if (!args.response.entity) replaceDialog('askDifferentTimes', { reprompt: true })
+        if (args.response.entity == 'Pick a different day') {
+            session.replaceDialog('askDifferentDay');
+        }
+        else {
             // mark it as booked
             let exactTime = new Date(session.userData.availableTimeslots[args.response.index]);
             isTimeslotAvailable(session, exactTime);
@@ -263,10 +273,26 @@ bot.dialog('askDifferentTimes', [
 
             session.userData.apptTime = exactTime;
             session.endDialog();
-
         }
-        else if (args.response.index == 1) {
+    }
+]);
 
+bot.dialog('askDifferentDay', [
+    function (session, args) {
+        if (args && args.reprompt){
+            session.send('Please provide a valid answer');            
+        }
+        builder.Prompts.time(session, 'What day would you like? You may also provide a range of days.');       
+    },
+    function (session, args) {
+        const time = args.noprompt ? session.userData.timeEntity.entity : args.response.entity;
+        if (!time) session.replaceDialog('askTime', { reprompt: true });
+        else {
+            // get times based on new day
+            let exactTime = builder.EntityRecognizer.parseTime(time);
+            session.userData.requestedDate = exactTime;
+            session.userData.availableTimeslots = getAvailableTimeslots(session);
+            session.replaceDialog('askDifferentTimes');
         }
     }
 ]);
@@ -285,7 +311,7 @@ bot.dialog('Help', function (session) {
     session.endDialog('Hi! Try asking me things like \'schedule an appointment\'');
 }).triggerAction({
     matches: ['Hello', 'Help'],
-    intentThreshold: .65
+    intentThreshold: .85
 });
 
 bot.dialog('Cancel', function (session) {
