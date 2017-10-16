@@ -40,7 +40,7 @@ var doctorsSchedule = {
     Radiologist: {
         2017: {
             9: {
-                12: {
+                16: {
                     9: {
                         0: 'booked',
                         30: 'available'
@@ -57,7 +57,7 @@ var doctorsSchedule = {
                         0: 'available'
                     }
                 },
-                13: {
+                17: {
                     14: {
                         0: 'booked',
                         30: 'available'
@@ -77,7 +77,11 @@ bot.dialog('scheduleAppointment', [
         // session.send('Welcome to the Appointment Scheduler! We are analyzing your message: \'%s\'', session.message.text);
         // try extracting entities
         session.userData.doctorEntity = builder.EntityRecognizer.findEntity(args.intent.entities, 'DoctorType');
-        session.userData.timeEntity = builder.EntityRecognizer.findEntity(args.intent.entities, 'builtin.datetimeV2.datetime');
+
+        session.userData.dateTimeEntity = builder.EntityRecognizer.findEntity(args.intent.entities, 'builtin.datetimeV2.datetime');
+        session.userData.dateEntity = builder.EntityRecognizer.findEntity(args.intent.entities, 'builtin.datetimeV2.date');
+        session.userData.timeEntity = builder.EntityRecognizer.findEntity(args.intent.entities, 'builtin.datetimeV2.time');
+
         session.userData.reasonEntity = builder.EntityRecognizer.findEntity(args.intent.entities, 'AppointmentReason');
 
         if (!session.userData.doctorEntity) {
@@ -97,12 +101,63 @@ bot.dialog('scheduleAppointment', [
         }
     },
     function (session, args, next) {
-        if (!session.userData.timeEntity) {
-            // time entity is not detected, ask for it
-            session.beginDialog('askTime');
+        // if there is no date nor time ex. tomorrow 2pm
+        if (!session.userData.dateEntity && !session.userData.timeEntity && !session.userData.dateTimeEntity) {
+            // then open dialog asking for day/time
+            session.beginDialog('askDayAndTime');
         }
-        else {
-            session.beginDialog('askTime', { noprompt: true })
+
+        // if there's no time ex. 2pm
+        // then display available times for that day
+        if (session.userData.dateEntity) {
+            // then open dialog asking for time
+            let reqDate = builder.EntityRecognizer.parseTime(session.userData.dateEntity.entity);
+            session.userData.requestedDate = reqDate;
+            session.beginDialog('askTimeForGivenDay');
+        }
+
+        // if there's no day ex. tomorrow
+        // open dialog asking what days for that time
+        if (session.userData.timeEntity) {
+            // then open dialog asking for day
+            let reqDate = builder.EntityRecognizer.parseTime(session.userData.timeEntity.entity);
+            session.userData.requestedDate = reqDate;
+            // check if time is proper
+            if (!isIncrementOfThirty(reqDate)) {
+                session.userData.postProper = 'askDayForGivenTime';
+                session.beginDialog('askProperTime');
+            }
+            else {
+                // ask for dayForTime
+                session.beginDialog('askDayForGivenTime');
+            }
+        }
+
+        // if there are both date & time
+        // then use datetime entity and check if available
+        if (session.userData.dateTimeEntity) {
+            // check if is/isn't available
+            let reqDate = builder.EntityRecognizer.parseTime(session.userData.dateTimeEntity.entity);
+            session.userData.requestedDate = reqDate;
+
+            // check if time is not proper
+            if (!isIncrementOfThirty(reqDate)) {
+                session.userData.postProper = 'askTimeForGivenDay';
+                session.userData.checkAvailable = true;
+                session.beginDialog('askProperTime');
+            }
+            else {
+                // check if date is/isn't available in doctor's calendar
+                if (!isTimeslotAvailable(session, reqDate)) {
+                    // if not, try to find another time/day that works
+                    // since the requested time/date is not available
+                    session.beginDialog('askTimeForGivenDay', { unavail: true });
+                }
+                else {
+                    next();
+                }
+            }
+
         }
     },
     function (session, args, next) {
@@ -117,7 +172,7 @@ bot.dialog('scheduleAppointment', [
     },
     function (session) {
         session.send('Alright! Your appointment is scheduled with a ' + session.userData.doctorType +
-            ' for ' + session.userData.apptTime);
+            ' for ' + new Date(session.userData.requestedDate).toLocaleDateString('en-US', dateOptions));
         session.send("Thanks!");
     }
 ]).triggerAction({
@@ -141,11 +196,190 @@ bot.dialog('askDoctorType', [
     }
 ]);
 
+bot.dialog('askDayAndTime', [
+    function (session, args) {
+        builder.Prompts.time(session, 'Please enter a day and time');
+    },
+    function (session, args) {
+        const time = args.response.entity;
+        if (!time) session.replaceDialog('askDayAndTime', { reprompt: true });
+        // recognize entity check if received date, time, both or neither
+        builder.LuisRecognizer.recognize(time, process.env.LUIS_MODEL_URL,
+            function (err, intents, entities) {
+                if (entities) {
+                    // only one of these will be not null
+                    let dateTimeEntity = builder.EntityRecognizer.findEntity(entities, 'builtin.datetimeV2.datetime');
+                    let dateEntity = builder.EntityRecognizer.findEntity(entities, 'builtin.datetimeV2.date');
+                    let timeEntity = builder.EntityRecognizer.findEntity(entities, 'builtin.datetimeV2.time');
+                    // do something with entity...
+
+                    // returns date object
+                    let reqDate = builder.EntityRecognizer.parseTime(time);
+                    session.userData.requestedDate = reqDate;
+                    if (dateTimeEntity) {
+                        // check if time is not proper
+                        if (!isIncrementOfThirty(reqDate)) {
+                            session.userData.postProper = 'askTimeForGivenDay';
+                            session.replaceDialog('askProperTime');
+                        }
+                        else {
+                            // check if date is/isn't available in doctor's calendar
+                            if (!isTimeslotAvailable(session, reqDate)) {
+                                // if not, try to find another time/day that works
+                                // since the requested time/date is not available
+                                session.replaceDialog('askTimeForGivenDay', { unavail: true });
+                            }
+                            else {
+                                session.endDialog();
+                            }
+                        }
+                    }
+                    if (dateEntity) {
+                        // ask for timeForDay
+                        session.replaceDialog('askTimeForGivenDay');
+                    }
+                    if (timeEntity) {
+                        // check if time is proper
+                        if (!isIncrementOfThirty(reqDate)) {
+                            session.userData.postProper = 'askDayForGivenTime';
+                            session.replaceDialog('askProperTime');
+                        }
+                        else {
+                            // ask for dayForTime
+                            session.replaceDialog('askDayForGivenTime');
+                        }
+                    }
+                }
+            });
+    }
+]);
+
+bot.dialog('askProperTime', [
+    function (session, args) {
+        builder.Prompts.time(session, 'Please provide increments of 30 minutes only. (Examples: 1:30PM, 2:00PM, 2:30PM');
+    },
+    function (session, args) {
+        const time = args.response.entity;
+        if (!time) session.replaceDialog('askProperTime', { reprompt: true });
+
+        // recognize entity check if actually received time
+        builder.LuisRecognizer.recognize(time, process.env.LUIS_MODEL_URL,
+            function (err, intents, entities) {
+                if (entities) {
+                    let timeEntity = builder.EntityRecognizer.findEntity(entities, 'builtin.datetimeV2.time');
+                    // do something with entity...
+
+                    // returns date object
+                    let reqDate = builder.EntityRecognizer.parseTime(time);
+                    if (!timeEntity || !isIncrementOfThirty(reqDate)) {
+                        session.replaceDialog('askProperTime');
+                    }
+                    else {
+                        session.userData.requestedDate = new Date(session.userData.requestedDate);
+                        session.userData.requestedDate.setTime(reqDate.getTime());
+                        if (session.userData.checkAvailable) {
+                            if (isTimeslotAvailable(session, reqDate)) session.endDialog();
+                            else {
+                                session.replaceDialog(session.userData.postProper, { unavail: true });
+                            }
+                        }
+                        else {
+                            session.replaceDialog(session.userData.postProper);                            
+                        }
+                    }
+                }
+            });
+    }
+])
+
+bot.dialog('askTimeForGivenDay', [
+    function (session, args) {
+        session.userData.availableTimeslots = getAvailableTimeslots(session);
+        let timeslotStrings = [];
+        session.userData.availableTimeslots.forEach((timeslot) => timeslotStrings.push(timeslot.toLocaleTimeString('en-US', timeOptionsShort)));
+        timeslotStrings.push('Pick a different time/day');
+
+        if (timeslotStrings.length == 1) {
+            session.send('Sorry, this day has no available timeslots. Please pick a different date/time.');
+            session.replaceDialog('askDayAndTime');
+        }
+        else {
+            if (args) {
+                if (args.reprompt) session.send('Please choose from the available options');
+                if (args.unavail) {
+                    session.send('Sorry, that timeslot is booked. However, here are some other times for that day.');
+                    timeslotStrings.push(`View days with ${session.userData.requestedDate.toLocaleTimeString('en-US', timeOptionsShort)} available`);
+                }
+            }
+            builder.Prompts.choice(session, 'Which one of these times would you prefer?',
+                timeslotStrings,
+                { listStyle: builder.ListStyle.button });
+        }
+    },
+    function (session, args) {
+        if (!args.response.entity) replaceDialog('askTimeForGivenDay', { reprompt: true })
+        if (args.response.entity == 'Pick a different time/day') {
+            session.replaceDialog('askDayAndTime');
+        }
+        else if (args.response.entity == `View days with ${new Date(session.userData.requestedDate).toLocaleTimeString('en-US', timeOptionsShort)} available`) {
+            session.replaceDialog('askDayForGivenTime');
+        }
+        else {
+            // mark it as booked
+            let exactTime = new Date(session.userData.availableTimeslots[args.response.index]);
+            session.userData.requestedDate = exactTime;
+
+            session.endDialog();
+        }
+    }
+]);
+
+bot.dialog('askDayForGivenTime', [
+    function (session, args) {
+        // get array of dates which have hour & minute available
+        session.userData.availableDays = getAvailableDays(session);
+        let dayStrings = [];
+        session.userData.availableDays.forEach((day) => dayStrings.push(day.toLocaleDateString('en-US', dateOptionsShort)));
+        dayStrings.push('Pick a different time or day');
+        if (dayStrings.length == 1) {
+            // no available days for that time
+            // ask for different time
+            session.send('Sorry, there are no available days with this time. Please pick a different date/time.');
+            session.replaceDialog('askDayAndTime');
+        }
+        else {
+            builder.Prompts.choice(session, `Here are the days with a ${session.userData.requestedDate.toLocaleTimeString('en-US', timeOptionsShort)} available`, dayStrings,
+                { listStyle: builder.ListStyle.button });
+        }
+    },
+    function (session, args) {
+        if (!args.response.entity) replaceDialog('askDayForGivenTime', { reprompt: true })
+        else if (args.response.entity == 'Pick a different time or day') {
+            session.replaceDialog('askDayAndTime');
+        }
+        else {
+            let storedDate = new Date(session.userData.requestedDate);
+            storedDate.setDate(new Date(session.userData.availableDays[args.response.index]).getDate());
+            session.userData.requestedDate = storedDate;
+            session.endDialog();
+        }
+    }
+]);
+
 function addMinutes(date, minutes) {
     return new Date(date.getTime() + minutes * 60000);
 }
 
 function isTimeslotAvailable(session, requestedDate) {
+    let apptDatePath = doctorsSchedule[session.userData.doctorType][requestedDate.getFullYear()][requestedDate.getMonth()]
+    [requestedDate.getDate()][requestedDate.getHours()];
+    if (apptDatePath[requestedDate.getMinutes()] == 'available') {
+        return true;
+    }
+    return false;
+}
+
+function bookTimelot(session, requestedDate) {
     let apptDatePath = doctorsSchedule[session.userData.doctorType][requestedDate.getFullYear()][requestedDate.getMonth()]
     [requestedDate.getDate()][requestedDate.getHours()];
     if (apptDatePath[requestedDate.getMinutes()] == 'available') {
@@ -156,146 +390,46 @@ function isTimeslotAvailable(session, requestedDate) {
 }
 
 function getAvailableTimeslots(session) {
-    let requestedDate = session.userData.requestedDate;
+    let requestedDate = new Date(session.userData.requestedDate);
     let apptHours = doctorsSchedule[session.userData.doctorType][requestedDate.getFullYear()][requestedDate.getMonth()]
     [requestedDate.getDate()];
-    let availableTimeslots = [];
+    let availableTimes = [];
     for (let hour in apptHours) {
         if (apptHours.hasOwnProperty(hour)) {
             let minutes = apptHours[hour];
             for (let minute in minutes) {
                 if (apptHours[hour][minute] == 'available') {
                     let timeslot = new Date(requestedDate.getFullYear(), requestedDate.getMonth(), requestedDate.getDate(), hour, minute);
-                    availableTimeslots.push(timeslot);
+                    availableTimes.push(timeslot);
                 }
             }
         }
     }
-    return availableTimeslots;
+    return availableTimes;
 }
 
-bot.dialog('askTime', [
-    function (session, args, next) {
-        if (args && args.reprompt) {
-            builder.Prompts.time(session, 'Please provide increments of 30 minutes only. (Examples: 1:30PM, 2:00PM, 2:30PM');
-        }
-        else if (args && args.noprompt) {
-            next({ noprompt: true });
-        }
-        else {
-            builder.Prompts.time(session, 'When would you like to schedule the appointment? Provide increments of 30 minutes only. (Examples: 1:30PM, 2:00PM, 2:30PM');
-        }
-    },
-    function (session, args) {
-        const time = args.noprompt ? session.userData.timeEntity.entity : args.response.entity;
-        if (!time) session.replaceDialog('askTime', { reprompt: true });
-        else {
-            // returns date object
-            let exactTime = builder.EntityRecognizer.parseTime(time);
-
-            // TODO: check if date is given but not time
-
-            // add 30 mins to date
-            // only accept if minutes == 0 or minutes === 30
-            // reprompt if date is not increment of 30
-            if (!(exactTime.getMinutes() == 0 || exactTime.getMinutes() == 30)) {
-                session.replaceDialog('askTime', { reprompt: true });
-            }
-
-            // check if date is available in doctor's calendar
-            if (!isTimeslotAvailable(session, exactTime)) {
-                // try to find another time/day that works
-                // since the requested date is not available
-                session.userData.requestedDate = exactTime;
-                session.replaceDialog('timeslotUnavailable');
-            }
-            else {
-                // get date string. ex: Wednesday, October 11, 2017, 2:00 PM
-                exactTime = exactTime.toLocaleTimeString("en-us", dateOptions);
-
-                session.userData.apptTime = exactTime;
-                session.endDialog();
+function getAvailableDays(session) {
+    let requestedDate = new Date(session.userData.requestedDate);
+    let sched = doctorsSchedule[session.userData.doctorType];
+    let availableDays = [];
+    for (let year in sched) {
+        for (let month in sched[year]) {
+            for (let day in sched[year][month]) {
+                let schedDay = sched[year][month][day];
+                if ((schedDay[requestedDate.getHours()]) && (schedDay[requestedDate.getHours()][requestedDate.getMinutes()])
+                    && (schedDay[requestedDate.getHours()][requestedDate.getMinutes()] == 'available')) {
+                    let availableDay = new Date(year, month, day, requestedDate.getHours(), requestedDate.getMinutes());
+                    availableDays.push(availableDay);
+                }
             }
         }
     }
-]);
+    return availableDays;
+}
 
-bot.dialog('timeslotUnavailable', [
-    function (session, args) {
-        session.send('Sorry, that time slot is booked.');
-
-        builder.Prompts.choice(session, `Would you like to view available times for ${session.userData.requestedDate.toLocaleDateString('en-US', dateOptionsShort)} or pick a different day?`,
-            [`View times for ${session.userData.requestedDate.toLocaleDateString('en-US', dateOptionsShort)}`,
-                'Pick a different day'
-            ],
-            { listStyle: builder.ListStyle.button });
-    },
-    function (session, args) {
-        // need to create new date object because the one in userData got serialized
-        let date = new Date(session.userData.requestedDate);
-        session.userData.requestedDate = date;
-        if (args.response.index == 0) {
-            session.userData.availableTimeslots = getAvailableTimeslots(session);
-            session.replaceDialog('askDifferentTimes');
-        }
-        else if (args.response.index == 1) {
-            session.replaceDialog('askDifferentDay');
-        }
-    }
-]);
-
-bot.dialog('askDifferentTimes', [
-    function (session, args) {
-        if (args && args.reprompt) {
-            session.send('Please choose from the available options');
-        }
-        else {
-            let timeslotStrings = []
-            session.userData.availableTimeslots.forEach((timeslot) => timeslotStrings.push(timeslot.toLocaleTimeString('en-US', timeOptionsShort)));
-            timeslotStrings.push('Pick a different day');
-
-            builder.Prompts.choice(session, 'Which one of these times would you prefer?',
-                timeslotStrings,
-                { listStyle: builder.ListStyle.button });
-        }
-    },
-    function (session, args) {
-        if (!args.response.entity) replaceDialog('askDifferentTimes', { reprompt: true })
-        if (args.response.entity == 'Pick a different day') {
-            session.replaceDialog('askDifferentDay');
-        }
-        else {
-            // mark it as booked
-            let exactTime = new Date(session.userData.availableTimeslots[args.response.index]);
-            isTimeslotAvailable(session, exactTime);
-            // get date string. ex: Wednesday, October 11, 2017, 2:00 PM
-            exactTime = exactTime.toLocaleTimeString("en-us", dateOptions);
-
-            session.userData.apptTime = exactTime;
-            session.endDialog();
-        }
-    }
-]);
-
-bot.dialog('askDifferentDay', [
-    function (session, args) {
-        if (args && args.reprompt){
-            session.send('Please provide a valid answer');            
-        }
-        builder.Prompts.time(session, 'What day would you like? You may also provide a range of days.');       
-    },
-    function (session, args) {
-        const time = args.noprompt ? session.userData.timeEntity.entity : args.response.entity;
-        if (!time) session.replaceDialog('askTime', { reprompt: true });
-        else {
-            // get times based on new day
-            let exactTime = builder.EntityRecognizer.parseTime(time);
-            session.userData.requestedDate = exactTime;
-            session.userData.availableTimeslots = getAvailableTimeslots(session);
-            session.replaceDialog('askDifferentTimes');
-        }
-    }
-]);
+function isIncrementOfThirty(time) {
+    return (time.getMinutes() == 0 || time.getMinutes() == 30);
+}
 
 bot.dialog('askReason', [
     function (session) {
