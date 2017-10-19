@@ -40,7 +40,7 @@ var doctorsSchedule = {
     Radiologist: {
         2017: {
             9: {
-                16: {
+                19: {
                     9: {
                         0: 'booked',
                         30: 'available'
@@ -78,9 +78,11 @@ bot.dialog('scheduleAppointment', [
         // try extracting entities
         session.userData.doctorEntity = builder.EntityRecognizer.findEntity(args.intent.entities, 'DoctorType');
 
-        session.userData.dateTimeEntity = builder.EntityRecognizer.findEntity(args.intent.entities, 'builtin.datetimeV2.datetime');
+
         session.userData.dateEntity = builder.EntityRecognizer.findEntity(args.intent.entities, 'builtin.datetimeV2.date');
         session.userData.timeEntity = builder.EntityRecognizer.findEntity(args.intent.entities, 'builtin.datetimeV2.time');
+        session.userData.dateTimeEntity = builder.EntityRecognizer.findEntity(args.intent.entities, 'builtin.datetimeV2.datetime');
+        session.userData.dateTimeRangeEntity = builder.EntityRecognizer.findEntity(args.intent.entities, 'builtin.datetimeV2.datetimerange');
 
         session.userData.reasonEntity = builder.EntityRecognizer.findEntity(args.intent.entities, 'AppointmentReason');
 
@@ -102,7 +104,8 @@ bot.dialog('scheduleAppointment', [
     },
     function (session, args, next) {
         // if there is no date nor time ex. tomorrow 2pm
-        if (!session.userData.dateEntity && !session.userData.timeEntity && !session.userData.dateTimeEntity) {
+        // nor datetimerange
+        if (!session.userData.dateEntity && !session.userData.timeEntity && !session.userData.dateTimeEntity && !session.userData.dateTimeRangeEntity) {
             // then open dialog asking for day/time
             session.beginDialog('askDayAndTime');
         }
@@ -157,7 +160,60 @@ bot.dialog('scheduleAppointment', [
                     next();
                 }
             }
+        }
 
+        // if there is a date and time range
+        // then use datetimerange entity and check if available
+        if (session.userData.dateTimeRangeEntity) {
+            let dateRange = session.userData.dateTimeRangeEntity.resolution.values;
+
+            let dateRangeClean = []
+            // check if there is more than one date RANGE
+            // make sure the ranges are clean. Ex. cannot be a range in the past
+            if (dateRange.length > 1) {
+                // there is
+                // if the start of the range is not before today, add it to array
+                dateRange.forEach((date) => {
+                    let tempDateObj = new Date(date.start);
+                    let tempDate = tempDateObj.getDate();
+                    let tempMonth = tempDateObj.getMonth();
+
+                    let currDateObj = new Date();
+                    let currDate = currDateObj.getDate();
+                    let currMonth = currDateObj.getMonth();
+                    // if the date is today or onwards
+                    if ((tempMonth > currMonth) || (tempMonth = currMonth && tempDate >= currDate)) {
+                        // add it to acceptable date range
+                        dateRangeClean.push(date);
+                    }
+                });
+            }
+            if (dateRange.length == 1) dateRangeClean.push(dateRange[0]);
+
+            // may have 0 date ranges after cleaning
+            // ask time and tell them the date can't be in the past
+            if (!dateRangeClean.length) {
+                // then open dialog asking for day/time
+                session.beginDialog('askDayAndTime', { pastDate: true });
+            }
+
+            // may have 1 date range after cleaning 
+            if (dateRangeClean.length == 1) {
+                // check for available timeslots that fall in between start/end in given day
+                session.userData.requestedDate = new Date(dateRangeClean[0].start);
+                session.userData.availableTimeslots = getAvailableTimeslots(session, new Date(dateRangeClean[0].end));
+
+                // if no available timeslots
+                // try to find another day/time that works
+                let isTimeslotAvailable = session.userData.availableTimeslots.length > 0;
+                if (isTimeslotAvailable) {
+                    session.beginDialog('askTimeForGivenDay', { avail: isTimeslotAvailable });
+                }
+                else {
+                    session.beginDialog('askTimeForGivenDay', { unavail: !isTimeslotAvailable });
+                }
+            }
+            // TODO: may have >1 date ranges after cleaning
         }
     },
     function (session, args, next) {
@@ -198,6 +254,9 @@ bot.dialog('askDoctorType', [
 
 bot.dialog('askDayAndTime', [
     function (session, args) {
+        if (args && args.pastDate) {
+            session.send("The date cannot be in the past");
+        }
         builder.Prompts.time(session, 'Please enter a day and time');
     },
     function (session, args) {
@@ -284,7 +343,7 @@ bot.dialog('askProperTime', [
                             }
                         }
                         else {
-                            session.replaceDialog(session.userData.postProper);                            
+                            session.replaceDialog(session.userData.postProper);
                         }
                     }
                 }
@@ -294,7 +353,7 @@ bot.dialog('askProperTime', [
 
 bot.dialog('askTimeForGivenDay', [
     function (session, args) {
-        session.userData.availableTimeslots = getAvailableTimeslots(session);
+        session.userData.availableTimeslots = (args && args.avail) ? session.userData.availableTimeslots: getAvailableTimeslots(session);
         let timeslotStrings = [];
         session.userData.availableTimeslots.forEach((timeslot) => timeslotStrings.push(timeslot.toLocaleTimeString('en-US', timeOptionsShort)));
         timeslotStrings.push('Pick a different time/day');
@@ -389,18 +448,27 @@ function bookTimelot(session, requestedDate) {
     return false;
 }
 
-function getAvailableTimeslots(session) {
+function getAvailableTimeslots(session, endTime) {
+    if (endTime) endTime = new Date(endTime);
     let requestedDate = new Date(session.userData.requestedDate);
     let apptHours = doctorsSchedule[session.userData.doctorType][requestedDate.getFullYear()][requestedDate.getMonth()]
     [requestedDate.getDate()];
     let availableTimes = [];
-    for (let hour in apptHours) {
+    for (var hour in apptHours) {
         if (apptHours.hasOwnProperty(hour)) {
-            let minutes = apptHours[hour];
-            for (let minute in minutes) {
+            var minutes = apptHours[hour];
+            for (var minute in minutes) {
                 if (apptHours[hour][minute] == 'available') {
-                    let timeslot = new Date(requestedDate.getFullYear(), requestedDate.getMonth(), requestedDate.getDate(), hour, minute);
-                    availableTimes.push(timeslot);
+                    // looks messy but is simple
+                    // 2 conditions for the timeslot to be added even though the timeslot is available
+                    // 1: need to check the range and see if it fits in between
+                    // 2: do not need to check the range, so just add it
+                    let afterReqStart = (hour > requestedDate.getHours() || (hour == requestedDate.getHours() && minute >= requestedDate.getMinutes()));
+                    let beforeReqEnd = (hour < endTime.getHours() || (hour == endTime.getHours() && minute < endTime.getMinutes()));
+                    if ((endTime && (afterReqStart && beforeReqEnd)) || !endTime) {
+                        let timeslot = new Date(requestedDate.getFullYear(), requestedDate.getMonth(), requestedDate.getDate(), hour, minute);
+                        availableTimes.push(timeslot);
+                    }
                 }
             }
         }
