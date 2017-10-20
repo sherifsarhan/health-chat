@@ -35,6 +35,7 @@ var timeEntity;
 var reasonEntity;
 const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
 const dateOptionsShort = { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' };
+const dateOptionsShortWithTime = { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
 const timeOptionsShort = { hour: '2-digit', minute: '2-digit' };
 var doctorsSchedule = {
     Radiologist: {
@@ -47,7 +48,7 @@ var doctorsSchedule = {
                     },
                     10: {
                         0: 'available',
-                        0: 'available'
+                        30: 'available'
                     },
                     14: {
                         0: 'booked',
@@ -142,7 +143,7 @@ bot.dialog('scheduleAppointment', [
         session.userData.timeEntity = builder.EntityRecognizer.findEntity(args.intent.entities, 'builtin.datetimeV2.time');
         session.userData.dateTimeEntity = builder.EntityRecognizer.findEntity(args.intent.entities, 'builtin.datetimeV2.datetime');
         session.userData.dateTimeRangeEntity = builder.EntityRecognizer.findEntity(args.intent.entities, 'builtin.datetimeV2.datetimerange');
-        session.userData.timeRangeEntity = builder.EntityRecognizer.findEntity(args.intent.entities, 'builtin.datetimeV2.timerange');        
+        session.userData.timeRangeEntity = builder.EntityRecognizer.findEntity(args.intent.entities, 'builtin.datetimeV2.timerange');
 
         session.userData.reasonEntity = builder.EntityRecognizer.findEntity(args.intent.entities, 'AppointmentReason');
 
@@ -165,7 +166,9 @@ bot.dialog('scheduleAppointment', [
     function (session, args, next) {
         // if there is no date nor time ex. tomorrow 2pm
         // nor datetimerange
-        if (!session.userData.dateEntity && !session.userData.timeEntity && !session.userData.dateTimeEntity && !session.userData.dateTimeRangeEntity) {
+        if (!session.userData.dateEntity && !session.userData.timeEntity &&
+            !session.userData.dateTimeEntity && !session.userData.dateTimeRangeEntity &&
+            !session.userData.timeRangeEntity) {
             // then open dialog asking for day/time
             session.beginDialog('askDayAndTime');
         }
@@ -234,7 +237,12 @@ bot.dialog('scheduleAppointment', [
 
         // if there is a time range detected
         if (session.userData.timeRangeEntity) {
-            let timeRange = session.userData.dateTimeRangeEntity.resolution.values;            
+            let timeRangeStart = session.userData.timeRangeEntity.resolution.values[0].start;
+            let timeRangeEnd = session.userData.timeRangeEntity.resolution.values[0].end;
+            session.beginDialog('askDayForGivenTime', { timeRange: { start: timeRangeStart, end: timeRangeEnd } });
+        }
+        else {
+            session.beginDialog('askDayAndTime');
         }
     },
     function (session, args, next) {
@@ -290,8 +298,9 @@ bot.dialog('askDayAndTime', [
                     let dateEntity = builder.EntityRecognizer.findEntity(entities, 'builtin.datetimeV2.date');
                     let timeEntity = builder.EntityRecognizer.findEntity(entities, 'builtin.datetimeV2.time');
                     let dateTimeRangeEntity = builder.EntityRecognizer.findEntity(entities, 'builtin.datetimeV2.datetimerange');
-
-                    if (!dateTimeEntity && !dateEntity && !timeEntity && !dateTimeRangeEntity) {
+                    let timeRangeEntity = builder.EntityRecognizer.findEntity(entities, 'builtin.datetimeV2.timerange');
+                    
+                    if (!dateTimeEntity && !dateEntity && !timeEntity && !dateTimeRangeEntity && !timeRangeEntity) {
                         session.replaceDialog('askDayAndTime', { reprompt: true });
                     }
 
@@ -345,6 +354,13 @@ bot.dialog('askDayAndTime', [
                         let dateRange = dateTimeRangeEntity.resolution.values;
                         let dateRangeClean = cleanDateRange(dateRange);
                         handleDateTimeRange(session, dateRangeClean);
+                    }
+
+                    // if there is a time range detected
+                    if (timeRangeEntity) {
+                        let timeRangeStart = timeRangeEntity.resolution.values[0].start;
+                        let timeRangeEnd = timeRangeEntity.resolution.values[0].end;
+                        session.beginDialog('askDayForGivenTime', { timeRange: { start: timeRangeStart, end: timeRangeEnd } });
                     }
                 }
             });
@@ -433,10 +449,22 @@ bot.dialog('askTimeForGivenDay', [
 
 bot.dialog('askDayForGivenTime', [
     function (session, args) {
-        // get array of dates which have hour & minute available
-        session.userData.availableDays = getAvailableDays(session);
         let dayStrings = [];
-        session.userData.availableDays.forEach((day) => dayStrings.push(day.toLocaleDateString('en-US', dateOptionsShort)));
+        let timeslotString;
+        if (args && args.timeRange) {
+            // get array of dates that are in between time range
+            session.userData.availableDays = getAvailableDays(session, args.timeRange);
+            session.userData.availableDays.forEach((day) => dayStrings.push(day.toLocaleDateString('en-US', dateOptionsShortWithTime)));
+            timeslotString = `${builder.EntityRecognizer.parseTime(args.timeRange.start).toLocaleTimeString('en-US', timeOptionsShort)} - 
+            ${builder.EntityRecognizer.parseTime(args.timeRange.end).toLocaleTimeString('en-US', timeOptionsShort)}`;
+        }
+        else {
+            // get array of dates which have hour & minute available
+            session.userData.availableDays = getAvailableDays(session);
+            session.userData.availableDays.forEach((day) => dayStrings.push(day.toLocaleDateString('en-US', dateOptionsShort)));
+            timeslotString = session.userData.requestedDate.toLocaleTimeString('en-US', timeOptionsShort);
+        }
+
         dayStrings.push('Pick a different time or day');
         if (dayStrings.length == 1) {
             // no available days for that time
@@ -445,7 +473,7 @@ bot.dialog('askDayForGivenTime', [
             session.replaceDialog('askDayAndTime');
         }
         else {
-            builder.Prompts.choice(session, `Here are the days with a ${session.userData.requestedDate.toLocaleTimeString('en-US', timeOptionsShort)} available`, dayStrings,
+            builder.Prompts.choice(session, `Here are the days with a ${timeslotString} timeslot available`, dayStrings,
                 { listStyle: builder.ListStyle.button });
         }
     },
@@ -522,20 +550,42 @@ function getAvailableTimeslots(session, endTime) {
 }
 
 function isInTimeRange(start, end, time) {
+    start = (start instanceof Date) ? start : builder.EntityRecognizer.parseTime(start);
+    end = (end instanceof Date) ? end : builder.EntityRecognizer.parseTime(end);
+
     let afterReqStart = (time.hour > start.getHours() || (time.hour == start.getHours() && time.minute >= start.getMinutes()));
     let beforeReqEnd = (time.hour < end.getHours() || (time.hour == end.getHours() && time.minute < end.getMinutes()));
     return (afterReqStart && beforeReqEnd);
 }
 
 function getAvailableDays(session, timeRange) {
+    if (timeRange) session.userData.requestedDate = builder.EntityRecognizer.parseTime(timeRange.start);
     let requestedDate = (session.userData.requestedDate instanceof Date) ? session.userData.requestedDate : new Date(session.userData.requestedDate);
     let sched = doctorsSchedule[session.userData.doctorType];
     let availableDays = [];
     for (let year in sched) {
         for (let month in sched[year]) {
-            for (let day in sched[year][month]) {
+            for (var day in sched[year][month]) {
                 let schedDay = sched[year][month][day];
-                if ((schedDay[requestedDate.getHours()]) && (schedDay[requestedDate.getHours()][requestedDate.getMinutes()])
+
+                // if supplied a timeRange
+                if (timeRange) {
+                    for (var hour in schedDay) {
+                        for (var minute in schedDay[hour]) {
+                            if (schedDay[hour][minute] == 'available') {
+                                // check if this available timeslot fits in requested time range
+                                let inRange = isInTimeRange(timeRange.start, timeRange.end, { hour, minute });
+                                if (inRange) {
+                                    let availableDay = new Date(year, month, day, hour, minute);
+                                    availableDays.push(availableDay);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // if supplied just time (hour and minutes)
+                if (!timeRange && (schedDay[requestedDate.getHours()]) && (schedDay[requestedDate.getHours()][requestedDate.getMinutes()])
                     && (schedDay[requestedDate.getHours()][requestedDate.getMinutes()] == 'available')) {
                     let availableDay = new Date(year, month, day, requestedDate.getHours(), requestedDate.getMinutes());
                     availableDays.push(availableDay);
