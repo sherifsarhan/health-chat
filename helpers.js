@@ -14,11 +14,11 @@ class Helpers {
             dateRange.forEach((date) => {
                 let tempDateObj = date.start ? new Date(date.start) : new Date(date.value);
                 let tempDate = tempDateObj.getUTCDate();
-                let tempMonth = tempDateObj.getMonth();
+                let tempMonth = tempDateObj.getUTCMonth();
 
                 let currDateObj = new Date();
                 let currDate = currDateObj.getUTCDate();
-                let currMonth = currDateObj.getMonth();
+                let currMonth = currDateObj.getUTCMonth();
                 // if the date is today or onwards
                 if ((tempMonth > currMonth) || (tempMonth = currMonth && tempDate >= currDate)) {
                     // add it to acceptable date range
@@ -91,7 +91,7 @@ class Helpers {
     }
 
     isTimeslotAvailable(session, requestedDate) {
-        let apptDatePath = schedule.doctorsSchedule[session.userData.doctorType][requestedDate.getFullYear()][requestedDate.getMonth()]
+        let apptDatePath = schedule.doctorsSchedule[session.userData.doctorType][requestedDate.getFullYear()][requestedDate.getUTCMonth()]
         [requestedDate.getUTCDate()][requestedDate.getHours()];
         if (apptDatePath && apptDatePath[requestedDate.getMinutes()] == 'available') {
             return true;
@@ -100,7 +100,7 @@ class Helpers {
     }
 
     bookTimeslot(session, requestedDate) {
-        let apptDatePath = schedule.doctorsSchedule[session.userData.doctorType][requestedDate.getFullYear()][requestedDate.getMonth()]
+        let apptDatePath = schedule.doctorsSchedule[session.userData.doctorType][requestedDate.getFullYear()][requestedDate.getUTCMonth()]
         [requestedDate.getUTCDate()][requestedDate.getHours()];
         if (apptDatePath[requestedDate.getMinutes()] == 'available') {
             apptDatePath[requestedDate.getMinutes()] = 'booked';
@@ -111,7 +111,7 @@ class Helpers {
 
     getAvailableTimeslots(session, endTime) {
         let requestedDate = (session.userData.requestedDate instanceof Date) ? session.userData.requestedDate : new Date(session.userData.requestedDate);
-        let apptHours = schedule.doctorsSchedule[session.userData.doctorType][requestedDate.getFullYear()][requestedDate.getMonth()]
+        let apptHours = schedule.doctorsSchedule[session.userData.doctorType][requestedDate.getFullYear()][requestedDate.getUTCMonth()]
         [requestedDate.getUTCDate()];
         let availableTimes = [];
         for (var hour in apptHours) {
@@ -127,12 +127,12 @@ class Helpers {
                             endTime = new Date(endTime);
                             let inRange = this.isInTimeRange(requestedDate, endTime, { hour, minute });
                             if (inRange) {
-                                let timeslot = new Date(requestedDate.getFullYear(), requestedDate.getMonth(), requestedDate.getUTCDate(), hour, minute);
+                                let timeslot = new Date(requestedDate.getFullYear(), requestedDate.getUTCMonth(), requestedDate.getUTCDate(), hour, minute);
                                 availableTimes.push(timeslot);
                             }
                         }
                         else {
-                            let timeslot = new Date(requestedDate.getFullYear(), requestedDate.getMonth(), requestedDate.getUTCDate(), hour, minute);
+                            let timeslot = new Date(requestedDate.getFullYear(), requestedDate.getUTCMonth(), requestedDate.getUTCDate(), hour, minute);
                             availableTimes.push(timeslot);
                         }
                     }

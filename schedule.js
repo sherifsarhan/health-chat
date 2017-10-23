@@ -84,8 +84,10 @@ module.exports = {
                         15: {
                             0: 'available'
                         }
-                    },
-                    28: {
+                    }                    
+                },
+                10: {
+                    1: {
                         8: {
                             0: 'booked',
                             30: 'available'
