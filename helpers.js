@@ -12,7 +12,7 @@ class Helpers {
             // there is
             // if the start of the range is not before today, add it to array
             dateRange.forEach((date) => {
-                let tempDateObj = new Date(date.start);
+                let tempDateObj = date.start ? new Date(date.start) : new Date(date.value);
                 let tempDate = tempDateObj.getUTCDate();
                 let tempMonth = tempDateObj.getMonth();
 

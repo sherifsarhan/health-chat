@@ -36,8 +36,8 @@ var doctorEntity;
 var timeEntity;
 var reasonEntity;
 const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
-const dateOptionsShort = { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' };
-const dateOptionsShortWithTime = { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+const dateOptionsShort = { weekday: 'short', month: 'short', day: 'numeric' };
+const dateOptionsShortWithTime = { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
 const timeOptionsShort = { hour: '2-digit', minute: '2-digit' };
 
 
@@ -261,8 +261,10 @@ bot.dialog('askDayAndTime', [
                         }
                     }
                     if (dateEntity) {
+                        // ensure date not in past
+                        let cleanDate = helpers.cleanDateRange(dateEntity.resolution.values)
                         // returns date object
-                        let reqDate = new Date(dateEntity.resolution.values[0].value);
+                        let reqDate = new Date(cleanDate[0].value);
                         session.userData.requestedDate = reqDate;
                         // ask for timeForDay
                         session.replaceDialog('askTimeForGivenDay');
