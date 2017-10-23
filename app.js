@@ -41,7 +41,7 @@ var doctorsSchedule = {
     Radiologist: {
         2017: {
             9: {
-                20: {
+                23: {
                     9: {
                         0: 'booked',
                         30: 'available'
@@ -58,7 +58,7 @@ var doctorsSchedule = {
                         0: 'available'
                     }
                 },
-                21: {
+                24: {
                     8: {
                         0: 'booked',
                         30: 'available'
@@ -132,6 +132,38 @@ function handleDateTimeRange(session, dateRangeClean) {
     // TODO: may have >1 date ranges after cleaning
 }
 
+Date.prototype.addDays = function (days) {
+    var date = new Date(this.valueOf());
+    date.setDate(date.getDate() + days);
+    return date;
+}
+
+function getDates(startDate, stopDate) {
+    // returns array of dates in between two dates
+    var dateArray = new Array();
+    var currentDate = startDate;
+    while (currentDate <= stopDate) {
+        dateArray.push(new Date(currentDate));
+        currentDate = currentDate.addDays(1);
+    }
+    return dateArray;
+}
+
+function handleDateRange(session, dateRangeClean) {
+    // get array of dates we need timeslots for
+    let dates = getDates(new Date(dateRangeClean[0].start), new Date(dateRangeClean[0].end));
+
+    let allTimeslots = []
+    // for each date, get available timeslots and add it to total timeslots list
+    dates.forEach((date) => {
+        session.userData.requestedDate = date;
+        let timeslots = getAvailableTimeslots(session);
+        allTimeslots = allTimeslots.concat(timeslots);
+    });
+    session.userData.availableTimeslots = allTimeslots;
+    session.beginDialog('askTimeForGivenDay', { avail: true, dateRange: true });
+}
+
 bot.dialog('scheduleAppointment', [
     function (session, args, next) {
         session.userData = {};
@@ -144,6 +176,7 @@ bot.dialog('scheduleAppointment', [
         session.userData.dateTimeEntity = builder.EntityRecognizer.findEntity(args.intent.entities, 'builtin.datetimeV2.datetime');
         session.userData.dateTimeRangeEntity = builder.EntityRecognizer.findEntity(args.intent.entities, 'builtin.datetimeV2.datetimerange');
         session.userData.timeRangeEntity = builder.EntityRecognizer.findEntity(args.intent.entities, 'builtin.datetimeV2.timerange');
+        session.userData.dateRangeEntity = builder.EntityRecognizer.findEntity(args.intent.entities, 'builtin.datetimeV2.daterange');
 
         session.userData.reasonEntity = builder.EntityRecognizer.findEntity(args.intent.entities, 'AppointmentReason');
 
@@ -168,7 +201,7 @@ bot.dialog('scheduleAppointment', [
         // nor datetimerange
         if (!session.userData.dateEntity && !session.userData.timeEntity &&
             !session.userData.dateTimeEntity && !session.userData.dateTimeRangeEntity &&
-            !session.userData.timeRangeEntity) {
+            !session.userData.timeRangeEntity && !session.userData.dateRangeEntity) {
             // then open dialog asking for day/time
             session.beginDialog('askDayAndTime');
         }
@@ -229,9 +262,7 @@ bot.dialog('scheduleAppointment', [
         // then use datetimerange entity and check if available
         if (session.userData.dateTimeRangeEntity) {
             let dateRange = session.userData.dateTimeRangeEntity.resolution.values;
-
             let dateRangeClean = cleanDateRange(dateRange);
-
             handleDateTimeRange(session, dateRangeClean);
         }
 
@@ -241,8 +272,17 @@ bot.dialog('scheduleAppointment', [
             let timeRangeEnd = session.userData.timeRangeEntity.resolution.values[0].end;
             session.beginDialog('askDayForGivenTime', { timeRange: { start: timeRangeStart, end: timeRangeEnd } });
         }
-        else {
-            session.beginDialog('askDayAndTime');
+
+        // if there is a date range detected
+        if (session.userData.dateRangeEntity) {
+            // get date ranges not in the past
+            let dateRange = session.userData.dateRangeEntity.resolution.values;
+            let dateRangeClean = cleanDateRange(dateRange);
+
+            // now have a clean date range
+            // find all available timeslots in that daterange
+            handleDateRange(session, dateRangeClean);
+
         }
     },
     function (session, args, next) {
@@ -299,8 +339,10 @@ bot.dialog('askDayAndTime', [
                     let timeEntity = builder.EntityRecognizer.findEntity(entities, 'builtin.datetimeV2.time');
                     let dateTimeRangeEntity = builder.EntityRecognizer.findEntity(entities, 'builtin.datetimeV2.datetimerange');
                     let timeRangeEntity = builder.EntityRecognizer.findEntity(entities, 'builtin.datetimeV2.timerange');
-                    
-                    if (!dateTimeEntity && !dateEntity && !timeEntity && !dateTimeRangeEntity && !timeRangeEntity) {
+                    let dateRangeEntity = builder.EntityRecognizer.findEntity(entities, 'builtin.datetimeV2.daterange');
+
+
+                    if (!dateTimeEntity && !dateEntity && !timeEntity && !dateTimeRangeEntity && !timeRangeEntity && !dateRangeEntity) {
                         session.replaceDialog('askDayAndTime', { reprompt: true });
                     }
 
@@ -362,6 +404,18 @@ bot.dialog('askDayAndTime', [
                         let timeRangeEnd = timeRangeEntity.resolution.values[0].end;
                         session.beginDialog('askDayForGivenTime', { timeRange: { start: timeRangeStart, end: timeRangeEnd } });
                     }
+
+                    // if there is a date range detected
+                    if (dateRangeEntity) {
+                        // get date ranges not in the past
+                        let dateRange = dateRangeEntity.resolution.values;
+                        let dateRangeClean = cleanDateRange(dateRange);
+
+                        // now have a clean date range
+                        // find all available timeslots in that daterange
+                        handleDateRange(session, dateRangeClean);
+                    }
+
                 }
             });
     }
@@ -409,7 +463,12 @@ bot.dialog('askTimeForGivenDay', [
     function (session, args) {
         session.userData.availableTimeslots = (args && args.avail) ? session.userData.availableTimeslots : getAvailableTimeslots(session);
         let timeslotStrings = [];
-        session.userData.availableTimeslots.forEach((timeslot) => timeslotStrings.push(timeslot.toLocaleTimeString('en-US', timeOptionsShort)));
+        if (args && args.dateRange) {
+            session.userData.availableTimeslots.forEach((timeslot) => timeslotStrings.push(timeslot.toLocaleTimeString('en-US', dateOptionsShortWithTime)));
+        }
+        else {
+            session.userData.availableTimeslots.forEach((timeslot) => timeslotStrings.push(timeslot.toLocaleTimeString('en-US', timeOptionsShort)));
+        }
         timeslotStrings.push('Pick a different time/day');
 
         if (timeslotStrings.length == 1) {
