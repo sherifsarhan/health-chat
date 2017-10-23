@@ -1,6 +1,10 @@
 var schedule = require('./schedule');
-module.exports = {
-    cleanDateRange: function cleanDateRange(dateRange) {
+
+class Helpers {
+    constructor(builder) {
+        this.builder = builder;
+    }
+    cleanDateRange(dateRange) {
         let dateRangeClean = []
         // check if there is more than one date RANGE
         // make sure the ranges are clean. Ex. cannot be a range in the past
@@ -24,9 +28,9 @@ module.exports = {
         }
         if (dateRange.length == 1) dateRangeClean.push(dateRange[0]);
         return dateRangeClean;
-    },
+    }
 
-    handleDateTimeRange: function handleDateTimeRange(session, dateRangeClean) {
+    handleDateTimeRange(session, dateRangeClean) {
         // may have 0 date ranges after cleaning
         // ask time and tell them the date can't be in the past
         if (!dateRangeClean.length) {
@@ -38,7 +42,7 @@ module.exports = {
         if (dateRangeClean.length == 1) {
             // check for available timeslots that fall in between start/end in given day
             session.userData.requestedDate = new Date(dateRangeClean[0].start);
-            session.userData.availableTimeslots = exports.getAvailableTimeslots(session, new Date(dateRangeClean[0].end));
+            session.userData.availableTimeslots = this.getAvailableTimeslots(session, new Date(dateRangeClean[0].end));
 
             // if no available timeslots
             // try to find another day/time that works
@@ -51,9 +55,9 @@ module.exports = {
             }
         }
         // TODO: may have >1 date ranges after cleaning
-    },
+    }
 
-    getDates: function getDates(startDate, stopDate) {
+    getDates(startDate, stopDate) {
         // returns array of dates in between two dates
         var dateArray = new Array();
         var currentDate = startDate;
@@ -62,37 +66,40 @@ module.exports = {
             currentDate = currentDate.addDays(1);
         }
         return dateArray;
-    },
+    }
 
-    handleDateRange: function handleDateRange(session, dateRangeClean, timeRange) {
+    handleDateRange(session, dateRangeClean, timeRange) {
         // get array of dates we need timeslots for
-        let dates = exports.getDates(new Date(dateRangeClean[0].start), new Date(dateRangeClean[0].end));
+        let dates = this.getDates(new Date(dateRangeClean[0].start), new Date(dateRangeClean[0].end));
 
         let allTimeslots = []
         // for each date, get available timeslots and add it to total timeslots list
         dates.forEach((date) => {
-            let startTime = builder.EntityRecognizer.parseTime(timeRange.start);
-            let endTime = builder.EntityRecognizer.parseTime(timeRange.end);
-            date.setHours(startTime.getHours());
-            date.setMinutes(startTime.getMinutes());
+            let endTime;
+            if (timeRange) {
+                let startTime = this.builder.EntityRecognizer.parseTime(timeRange.start);
+                endTime = this.builder.EntityRecognizer.parseTime(timeRange.end);
+                date.setUTCHours(startTime.getUTCHours());
+                date.setUTCMinutes(startTime.getUTCMinutes());
+            }
             session.userData.requestedDate = date;
-            let timeslots = exports.getAvailableTimeslots(session, endTime);
+            let timeslots = this.getAvailableTimeslots(session, endTime);
             allTimeslots = allTimeslots.concat(timeslots);
         });
         session.userData.availableTimeslots = allTimeslots;
         session.beginDialog('askTimeForGivenDay', { avail: true, dateRange: true });
-    },
+    }
 
-    isTimeslotAvailable: function isTimeslotAvailable(session, requestedDate) {
+    isTimeslotAvailable(session, requestedDate) {
         let apptDatePath = schedule.doctorsSchedule[session.userData.doctorType][requestedDate.getFullYear()][requestedDate.getMonth()]
         [requestedDate.getUTCDate()][requestedDate.getHours()];
         if (apptDatePath && apptDatePath[requestedDate.getMinutes()] == 'available') {
             return true;
         }
         return false;
-    },
+    }
 
-    bookTimeslot: function bookTimeslot(session, requestedDate) {
+    bookTimeslot(session, requestedDate) {
         let apptDatePath = schedule.doctorsSchedule[session.userData.doctorType][requestedDate.getFullYear()][requestedDate.getMonth()]
         [requestedDate.getUTCDate()][requestedDate.getHours()];
         if (apptDatePath[requestedDate.getMinutes()] == 'available') {
@@ -100,9 +107,9 @@ module.exports = {
             return true;
         }
         return false;
-    },
+    }
 
-    getAvailableTimeslots: function getAvailableTimeslots(session, endTime) {
+    getAvailableTimeslots(session, endTime) {
         let requestedDate = (session.userData.requestedDate instanceof Date) ? session.userData.requestedDate : new Date(session.userData.requestedDate);
         let apptHours = schedule.doctorsSchedule[session.userData.doctorType][requestedDate.getFullYear()][requestedDate.getMonth()]
         [requestedDate.getUTCDate()];
@@ -118,7 +125,7 @@ module.exports = {
                         // 2: do not need to check the range, so just add it
                         if (endTime) {
                             endTime = new Date(endTime);
-                            let inRange = exports.isInTimeRange(requestedDate, endTime, { hour, minute });
+                            let inRange = this.isInTimeRange(requestedDate, endTime, { hour, minute });
                             if (inRange) {
                                 let timeslot = new Date(requestedDate.getFullYear(), requestedDate.getMonth(), requestedDate.getUTCDate(), hour, minute);
                                 availableTimes.push(timeslot);
@@ -133,19 +140,19 @@ module.exports = {
             }
         }
         return availableTimes;
-    },
+    }
 
-    isInTimeRange: function isInTimeRange(start, end, time) {
-        start = (start instanceof Date) ? start : builder.EntityRecognizer.parseTime(start);
-        end = (end instanceof Date) ? end : builder.EntityRecognizer.parseTime(end);
+    isInTimeRange(start, end, time) {
+        start = (start instanceof Date) ? start : this.builder.EntityRecognizer.parseTime(start);
+        end = (end instanceof Date) ? end : this.builder.EntityRecognizer.parseTime(end);
 
         let afterReqStart = (time.hour > start.getHours() || (time.hour == start.getHours() && time.minute >= start.getMinutes()));
         let beforeReqEnd = (time.hour < end.getHours() || (time.hour == end.getHours() && time.minute < end.getMinutes()));
         return (afterReqStart && beforeReqEnd);
-    },
+    }
 
-    getAvailableDays: function getAvailableDays(session, timeRange) {
-        if (timeRange) session.userData.requestedDate = builder.EntityRecognizer.parseTime(timeRange.start);
+    getAvailableDays(session, timeRange) {
+        if (timeRange) session.userData.requestedDate = this.builder.EntityRecognizer.parseTime(timeRange.start);
         let requestedDate = (session.userData.requestedDate instanceof Date) ? session.userData.requestedDate : new Date(session.userData.requestedDate);
         let sched = schedule.doctorsSchedule[session.userData.doctorType];
         let availableDays = [];
@@ -160,7 +167,7 @@ module.exports = {
                             for (var minute in schedDay[hour]) {
                                 if (schedDay[hour][minute] == 'available') {
                                     // check if this available timeslot fits in requested time range
-                                    let inRange = exports.isInTimeRange(timeRange.start, timeRange.end, { hour, minute });
+                                    let inRange = this.isInTimeRange(timeRange.start, timeRange.end, { hour, minute });
                                     if (inRange) {
                                         let availableDay = new Date(year, month, day, hour, minute);
                                         availableDays.push(availableDay);
@@ -180,9 +187,11 @@ module.exports = {
             }
         }
         return availableDays;
-    },
+    }
 
-    isIncrementOfThirty: function isIncrementOfThirty(time) {
+    isIncrementOfThirty(time) {
         return (time.getMinutes() == 0 || time.getMinutes() == 30);
     }
-};
+}
+
+module.exports = Helpers;
