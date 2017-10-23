@@ -149,15 +149,19 @@ function getDates(startDate, stopDate) {
     return dateArray;
 }
 
-function handleDateRange(session, dateRangeClean) {
+function handleDateRange(session, dateRangeClean, timeRange) {
     // get array of dates we need timeslots for
     let dates = getDates(new Date(dateRangeClean[0].start), new Date(dateRangeClean[0].end));
 
     let allTimeslots = []
     // for each date, get available timeslots and add it to total timeslots list
     dates.forEach((date) => {
+        let startTime = builder.EntityRecognizer.parseTime(timeRange.start);
+        let endTime = builder.EntityRecognizer.parseTime(timeRange.end);
+        date.setHours(startTime.getHours());
+        date.setMinutes(startTime.getMinutes());
         session.userData.requestedDate = date;
-        let timeslots = getAvailableTimeslots(session);
+        let timeslots = getAvailableTimeslots(session, endTime);
         allTimeslots = allTimeslots.concat(timeslots);
     });
     session.userData.availableTimeslots = allTimeslots;
@@ -266,15 +270,26 @@ bot.dialog('scheduleAppointment', [
             handleDateTimeRange(session, dateRangeClean);
         }
 
+        if (session.userData.dateRangeEntity && session.userData.timeRangeEntity) {
+            // clean the date ranges
+            let dateRange = session.userData.dateRangeEntity.resolution.values;
+            let dateRangeClean = cleanDateRange(dateRange);
+            // get the time ranges
+            let timeRangeStart = session.userData.timeRangeEntity.resolution.values[0].start;
+            let timeRangeEnd = session.userData.timeRangeEntity.resolution.values[0].end;
+            handleDateRange(session, dateRangeClean, { start: timeRangeStart, end: timeRangeEnd });
+
+        }
+
         // if there is a time range detected
-        if (session.userData.timeRangeEntity) {
+        if (session.userData.timeRangeEntity && !session.userData.dateRangeEntity) {
             let timeRangeStart = session.userData.timeRangeEntity.resolution.values[0].start;
             let timeRangeEnd = session.userData.timeRangeEntity.resolution.values[0].end;
             session.beginDialog('askDayForGivenTime', { timeRange: { start: timeRangeStart, end: timeRangeEnd } });
         }
 
         // if there is a date range detected
-        if (session.userData.dateRangeEntity) {
+        if (session.userData.dateRangeEntity && !session.userData.timeRangeEntity) {
             // get date ranges not in the past
             let dateRange = session.userData.dateRangeEntity.resolution.values;
             let dateRangeClean = cleanDateRange(dateRange);
@@ -398,15 +413,26 @@ bot.dialog('askDayAndTime', [
                         handleDateTimeRange(session, dateRangeClean);
                     }
 
+                    if (dateRangeEntity && timeRangeEntity) {
+                        // clean the date ranges
+                        let dateRange = dateRangeEntity.resolution.values;
+                        let dateRangeClean = cleanDateRange(dateRange);
+                        // get the time ranges
+                        let timeRangeStart = timeRangeEntity.resolution.values[0].start;
+                        let timeRangeEnd = timeRangeEntity.resolution.values[0].end;
+                        handleDateRange(session, dateRangeClean, { start: timeRangeStart, end: timeRangeEnd });
+            
+                    }
+
                     // if there is a time range detected
-                    if (timeRangeEntity) {
+                    if (timeRangeEntity && !dateRangeEntity) {
                         let timeRangeStart = timeRangeEntity.resolution.values[0].start;
                         let timeRangeEnd = timeRangeEntity.resolution.values[0].end;
                         session.beginDialog('askDayForGivenTime', { timeRange: { start: timeRangeStart, end: timeRangeEnd } });
                     }
 
                     // if there is a date range detected
-                    if (dateRangeEntity) {
+                    if (dateRangeEntity && !timeRangeEntity) {
                         // get date ranges not in the past
                         let dateRange = dateRangeEntity.resolution.values;
                         let dateRangeClean = cleanDateRange(dateRange);
@@ -521,6 +547,7 @@ bot.dialog('askDayForGivenTime', [
             // get array of dates which have hour & minute available
             session.userData.availableDays = getAvailableDays(session);
             session.userData.availableDays.forEach((day) => dayStrings.push(day.toLocaleDateString('en-US', dateOptionsShort)));
+            session.userData.requestedDate = (session.userData.requestedDate instanceof Date) ? session.userData.requestedDate : new Date(session.userData.requestedDate);
             timeslotString = session.userData.requestedDate.toLocaleTimeString('en-US', timeOptionsShort);
         }
 
@@ -589,8 +616,6 @@ function getAvailableTimeslots(session, endTime) {
                     // 2: do not need to check the range, so just add it
                     if (endTime) {
                         endTime = new Date(endTime);
-                        let afterReqStart = (hour > requestedDate.getHours() || (hour == requestedDate.getHours() && minute >= requestedDate.getMinutes()));
-                        let beforeReqEnd = (hour < endTime.getHours() || (hour == endTime.getHours() && minute < endTime.getMinutes()));
                         let inRange = isInTimeRange(requestedDate, endTime, { hour, minute });
                         if (inRange) {
                             let timeslot = new Date(requestedDate.getFullYear(), requestedDate.getMonth(), requestedDate.getUTCDate(), hour, minute);
