@@ -8,7 +8,8 @@ var restify = require('restify');
 var Store = require('./store');
 var spellService = require('./spell-service');
 var FuzzySet = require('fuzzyset.js');
-var helpers = require('./helpers');
+var Helpers = require('./helpers');
+var helpers = new Helpers(builder);
 
 // Setup Restify Server
 var server = restify.createServer();
