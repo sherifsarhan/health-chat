@@ -3,7 +3,7 @@ module.exports = {
         Radiologist: {
             2017: {
                 9: {
-                    23: {
+                    25: {
                         9: {
                             0: 'booked',
                             30: 'available'
@@ -20,7 +20,7 @@ module.exports = {
                             0: 'available'
                         }
                     },
-                    24: {
+                    26: {
                         8: {
                             0: 'available',
                             30: 'booked'
@@ -36,7 +36,7 @@ module.exports = {
                             0: 'booked'
                         }
                     },
-                    25: {
+                    27: {
                         14: {
                             0: 'available',
                             30: 'available'
@@ -52,7 +52,7 @@ module.exports = {
                             0: 'available'
                         }
                     },
-                    26: {
+                    28: {
                         11: {
                             0: 'available',
                             30: 'available'
@@ -69,7 +69,7 @@ module.exports = {
                             0: 'available'
                         }
                     },
-                    27: {
+                    29: {
                         8: {
                             0: 'booked',
                             30: 'booked'
