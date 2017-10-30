@@ -482,7 +482,8 @@ bot.dialog('askReason', [
         builder.Prompts.text(session, 'What is the reason for the appointment?');
     },
     function (session, results) {
-        session.userData.apptReason = results.response;
+        session.userData.apptReason = {};
+        session.userData.apptReason.entity = results.response;
         session.endDialog();
     }
 ]);
