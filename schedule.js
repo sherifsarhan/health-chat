@@ -3,7 +3,7 @@ module.exports = {
         Radiologist: {
             2017: {
                 9: {
-                    25: {
+                    30: {
                         9: {
                             0: 'booked',
                             30: 'available'
@@ -20,7 +20,7 @@ module.exports = {
                             0: 'available'
                         }
                     },
-                    26: {
+                    31: {
                         8: {
                             0: 'available',
                             30: 'booked'
@@ -35,56 +35,7 @@ module.exports = {
                         15: {
                             0: 'booked'
                         }
-                    },
-                    27: {
-                        14: {
-                            0: 'available',
-                            30: 'available'
-                        },
-                        15: {
-                            0: 'available'
-                        },
-                        16: {
-                            0: 'booked',
-                            30: 'booked'
-                        },
-                        17: {
-                            0: 'available'
-                        }
-                    },
-                    28: {
-                        11: {
-                            0: 'available',
-                            30: 'available'
-                        },
-                        12: {
-                            0: 'available',
-                            30: 'available'
-                        },
-                        13: {
-                            0: 'booked',
-                            30: 'available'
-                        },
-                        15: {
-                            0: 'available'
-                        }
-                    },
-                    29: {
-                        8: {
-                            0: 'booked',
-                            30: 'booked'
-                        },
-                        11: {
-                            0: 'available'
-                        },
-                        13: {
-                            0: 'available',
-                            30: 'available'
-                        },
-                        15: {
-                            0: 'available'
-                        }
-                    }                    
+                    }    
                 },
                 10: {
                     1: {
@@ -102,7 +53,56 @@ module.exports = {
                         15: {
                             0: 'booked'
                         }
-                    }
+                    },
+                    2: {
+                        14: {
+                            0: 'available',
+                            30: 'available'
+                        },
+                        15: {
+                            0: 'available'
+                        },
+                        16: {
+                            0: 'booked',
+                            30: 'booked'
+                        },
+                        17: {
+                            0: 'available'
+                        }
+                    },
+                    3: {
+                        11: {
+                            0: 'available',
+                            30: 'available'
+                        },
+                        12: {
+                            0: 'available',
+                            30: 'available'
+                        },
+                        13: {
+                            0: 'booked',
+                            30: 'available'
+                        },
+                        15: {
+                            0: 'available'
+                        }
+                    },
+                    4: {
+                        8: {
+                            0: 'booked',
+                            30: 'booked'
+                        },
+                        11: {
+                            0: 'available'
+                        },
+                        13: {
+                            0: 'available',
+                            30: 'available'
+                        },
+                        15: {
+                            0: 'available'
+                        }
+                    }                
                 }
             }
         }
