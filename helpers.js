@@ -68,9 +68,13 @@ class Helpers {
         return dateArray;
     }
 
-    handleDateRange(session, dateRangeClean, timeRange) {
-        // get array of dates we need timeslots for
-        let dates = this.getDates(new Date(dateRangeClean[0].start), new Date(dateRangeClean[0].end));
+    handleDateRange(session, dateRangeClean, timeRange, singleDate) {
+        // singleDate param is optional. A single date can be passed in and timeslots will be found for it
+
+        // get array of dates we need timeslots for day(s)
+        let dates;
+        if (!singleDate) dates = this.getDates(new Date(dateRangeClean[0].start), new Date(dateRangeClean[0].end));
+        else dates = [new Date(singleDate)];
 
         let allTimeslots = []
         // for each date, get available timeslots and add it to total timeslots list
