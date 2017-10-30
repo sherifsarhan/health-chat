@@ -69,7 +69,7 @@ bot.dialog('scheduleAppointment', [
         }
         else {
             // doctor type entity is detected, isolate doctor type through approximate matching
-            a = FuzzySet(['Radiologist', 'Psychologist', 'Cardiologist', 'Dermatologist']);
+            a = FuzzySet(['Radiologist', 'Psychiatrist', 'Cardiologist', 'Dermatologist']);
             // check if doctor user entered is in available set
             if (!a.get(session.userData.doctorEntity.entity) || a.get(session.userData.doctorEntity.entity)[0][0] < .5) {
                 // not in available set. ask for doctor type
@@ -91,11 +91,23 @@ bot.dialog('scheduleAppointment', [
 
         // if there's no time ex. 2pm
         // then display available times for that day
-        if (session.userData.dateEntity) {
+        if (session.userData.dateEntity && !session.userData.timeRangeEntity) {
             // then open dialog asking for time
             let reqDate = builder.EntityRecognizer.parseTime(session.userData.dateEntity.entity);
             session.userData.requestedDate = reqDate;
             session.beginDialog('askTimeForGivenDay');
+        }
+
+        // if there is a given date, and a given time range
+        if (session.userData.dateEntity && session.userData.timeRangeEntity) {
+            // then open dialog asking for time
+            let reqDate = builder.EntityRecognizer.parseTime(session.userData.dateEntity.entity);
+            session.userData.requestedDate = reqDate;
+
+            // get the time ranges
+            let timeRangeStart = session.userData.timeRangeEntity.resolution.values[0].start;
+            let timeRangeEnd = session.userData.timeRangeEntity.resolution.values[0].end;
+            helpers.handleDateRange(session, null, { start: timeRangeStart, end: timeRangeEnd }, reqDate);
         }
 
         // if there's no day ex. tomorrow
@@ -160,7 +172,7 @@ bot.dialog('scheduleAppointment', [
         }
 
         // if there is a time range detected
-        if (session.userData.timeRangeEntity && !session.userData.dateRangeEntity) {
+        if (session.userData.timeRangeEntity && !session.userData.dateEntity && !session.userData.dateRangeEntity) {
             let timeRangeStart = session.userData.timeRangeEntity.resolution.values[0].start;
             let timeRangeEnd = session.userData.timeRangeEntity.resolution.values[0].end;
             session.beginDialog('askDayForGivenTime', { timeRange: { start: timeRangeStart, end: timeRangeEnd } });
@@ -189,7 +201,7 @@ bot.dialog('scheduleAppointment', [
     },
     function (session) {
         session.send('Alright! Your appointment is scheduled with a ' + session.userData.doctorType +
-            ' for ' + new Date(session.userData.requestedDate).toLocaleDateString('en-US', dateOptions));
+            ' for ' + new Date(session.userData.requestedDate).toLocaleDateString('en-US', dateOptions) + ' for the reason: ' + session.userData.apptReason.entity);
         session.send("Thanks!");
     }
 ]).triggerAction({
@@ -260,7 +272,7 @@ bot.dialog('askDayAndTime', [
                             }
                         }
                     }
-                    if (dateEntity) {
+                    if (dateEntity && !timeRangeEntity) {
                         // ensure date not in past
                         let cleanDate = helpers.cleanDateRange(dateEntity.resolution.values)
                         // returns date object
@@ -284,6 +296,18 @@ bot.dialog('askDayAndTime', [
                         }
                     }
 
+                    // if there is a given date, and a given time range
+                    if (dateEntity && timeRangeEntity) {
+                        // then open dialog asking for time
+                        let reqDate = builder.EntityRecognizer.parseTime(dateEntity.entity);
+                        requestedDate = reqDate;
+
+                        // get the time ranges
+                        let timeRangeStart = timeRangeEntity.resolution.values[0].start;
+                        let timeRangeEnd = timeRangeEntity.resolution.values[0].end;
+                        helpers.handleDateRange(session, null, { start: timeRangeStart, end: timeRangeEnd }, reqDate);
+                    }
+
                     if (dateTimeRangeEntity) {
                         let dateRange = dateTimeRangeEntity.resolution.values;
                         let dateRangeClean = helpers.cleanDateRange(dateRange);
@@ -298,11 +322,11 @@ bot.dialog('askDayAndTime', [
                         let timeRangeStart = timeRangeEntity.resolution.values[0].start;
                         let timeRangeEnd = timeRangeEntity.resolution.values[0].end;
                         helpers.handleDateRange(session, dateRangeClean, { start: timeRangeStart, end: timeRangeEnd });
-            
+
                     }
 
                     // if there is a time range detected
-                    if (timeRangeEntity && !dateRangeEntity) {
+                    if (timeRangeEntity && !dateEntity && !dateRangeEntity) {
                         let timeRangeStart = timeRangeEntity.resolution.values[0].start;
                         let timeRangeEnd = timeRangeEntity.resolution.values[0].end;
                         session.beginDialog('askDayForGivenTime', { timeRange: { start: timeRangeStart, end: timeRangeEnd } });
@@ -464,7 +488,7 @@ bot.dialog('askReason', [
 ]);
 
 bot.dialog('Help', function (session) {
-    session.endDialog('Hi! Try asking me things like \'schedule an appointment\'');
+    session.endDialog('Hi! Try asking me things like: \n\n \'Schedule an appointment\' \n\n \'I need to see a radiologist\' \n\n\'I need to see a psychiatrist tomorrow between 2pm and 4pm\' \n\n \'Schedule me with a dermatologist this week at 1:30pm\' \n\n \'I want an appointment between october 30th and november 4th from 9am to 11:30am\'');
 }).triggerAction({
     matches: ['Hello', 'Help'],
     intentThreshold: .9
