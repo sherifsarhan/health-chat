@@ -206,7 +206,7 @@ bot.dialog('scheduleAppointment', [
     }
 ]).triggerAction({
     matches: 'ScheduleAppointment',
-    intentThreshold: .65
+    intentThreshold: .75
 });
 
 bot.dialog('askDoctorType', [
