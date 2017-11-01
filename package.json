@@ -1,25 +1,21 @@
 {
-  "name": "botbuilder-sample-luis",
+  "name": "health-chat-bot",
+  "engines" : { 
+    "node" : ">=6.11.1"
+  },
   "version": "1.0.0",
-  "description": "Bot Builder Sample - LUIS",
+  "description": "Personal Health Assistant",
   "scripts": {
     "start": "node app.js"
   },
-  "author": "Microsoft Corp.",
+  "author": "Sherif Sarhan",
   "license": "MIT",
   "keywords": [
     "botbuilder",
     "bots",
     "chatbots",
-    "botbuilder-samples"
+    "health"
   ],
-  "bugs": {
-    "url": "https://github.com/Microsoft/BotBuilder-Samples/issues"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/Microsoft/BotBuilder-Samples.git"
-  },
   "dependencies": {
     "bluebird": "^3.4.7",
     "botbuilder": "^3.8.2",
