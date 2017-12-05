@@ -20,6 +20,14 @@ var connector = new builder.ChatConnector({
     appId: process.env.MICROSOFT_APP_ID,
     appPassword: process.env.MICROSOFT_APP_PASSWORD
 });
+// Periodically refresh the token
+setInterval(() => {
+    connector.getAccessToken((error) => {
+            console.log(JSON.stringify(error));
+        }, (token) => {
+            console.log(`token refreshed: ${token}`); 
+        });
+}, 30 * 60 * 1000 /* 30 minutes in milliseconds*/ );
 server.post('/api/messages', connector.listen());
 
 var bot = new builder.UniversalBot(connector, function (session) {
