@@ -2,42 +2,7 @@ module.exports = {
     doctorsSchedule: {
         Radiologist: {
             2017: {
-                9: {
-                    30: {
-                        9: {
-                            0: 'booked',
-                            30: 'available'
-                        },
-                        10: {
-                            0: 'available',
-                            30: 'available'
-                        },
-                        14: {
-                            0: 'booked',
-                            30: 'available'
-                        },
-                        15: {
-                            0: 'available'
-                        }
-                    },
-                    31: {
-                        8: {
-                            0: 'available',
-                            30: 'booked'
-                        },
-                        9: {
-                            0: 'available'
-                        },
-                        10: {
-                            0: 'available',
-                            30: 'available'
-                        },
-                        15: {
-                            0: 'booked'
-                        }
-                    }    
-                },
-                10: {
+                11: {
                     1: {
                         8: {
                             0: 'booked',
@@ -156,42 +121,7 @@ module.exports = {
         },
         Psychiatrist: {
             2017: {
-                9: {
-                    30: {
-                        9: {
-                            0: 'booked',
-                            30: 'available'
-                        },
-                        10: {
-                            0: 'available',
-                            30: 'available'
-                        },
-                        14: {
-                            0: 'booked',
-                            30: 'available'
-                        },
-                        15: {
-                            0: 'available'
-                        }
-                    },
-                    31: {
-                        8: {
-                            0: 'available',
-                            30: 'booked'
-                        },
-                        9: {
-                            0: 'available'
-                        },
-                        10: {
-                            0: 'available',
-                            30: 'available'
-                        },
-                        15: {
-                            0: 'booked'
-                        }
-                    }    
-                },
-                10: {
+                11: {
                     1: {
                         8: {
                             0: 'booked',
@@ -310,42 +240,7 @@ module.exports = {
         },
         Dermatologist: {
             2017: {
-                9: {
-                    30: {
-                        9: {
-                            0: 'booked',
-                            30: 'available'
-                        },
-                        10: {
-                            0: 'available',
-                            30: 'available'
-                        },
-                        14: {
-                            0: 'booked',
-                            30: 'available'
-                        },
-                        15: {
-                            0: 'available'
-                        }
-                    },
-                    31: {
-                        8: {
-                            0: 'available',
-                            30: 'booked'
-                        },
-                        9: {
-                            0: 'available'
-                        },
-                        10: {
-                            0: 'available',
-                            30: 'available'
-                        },
-                        15: {
-                            0: 'booked'
-                        }
-                    }    
-                },
-                10: {
+                11: {
                     1: {
                         8: {
                             0: 'booked',
@@ -464,42 +359,7 @@ module.exports = {
         },
         Cardiologist: {
             2017: {
-                9: {
-                    30: {
-                        9: {
-                            0: 'booked',
-                            30: 'available'
-                        },
-                        10: {
-                            0: 'available',
-                            30: 'available'
-                        },
-                        14: {
-                            0: 'booked',
-                            30: 'available'
-                        },
-                        15: {
-                            0: 'available'
-                        }
-                    },
-                    31: {
-                        8: {
-                            0: 'available',
-                            30: 'booked'
-                        },
-                        9: {
-                            0: 'available'
-                        },
-                        10: {
-                            0: 'available',
-                            30: 'available'
-                        },
-                        15: {
-                            0: 'booked'
-                        }
-                    }    
-                },
-                10: {
+                11: {
                     1: {
                         8: {
                             0: 'booked',
