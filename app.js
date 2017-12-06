@@ -13,8 +13,8 @@ var helpers = new Helpers(builder);
 
 // Set up Azure CosmosDB
 var documentDbOptions = {
-    host: 'process.env.AZURE_DOCUMENTDB_URI', 
-    masterKey: 'process.env.AZURE_DOCUMENTDB_KEY',
+    host: process.env.AZURE_DOCUMENTDB_URI, 
+    masterKey: process.env.AZURE_DOCUMENTDB_KEY,
     database: 'botdocs',
     collection: 'botdata'
 };
