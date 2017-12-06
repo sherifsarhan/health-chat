@@ -15,7 +15,7 @@ var helpers = new Helpers(builder);
 var documentDbOptions = {
     host: 'Your-Azure-DocumentDB-URI', 
     masterKey: 'Your-Azure-DocumentDB-Key',
-    database: 'botdocs',   
+    database: 'botdocs',
     collection: 'botdata'
 };
 
@@ -37,11 +37,11 @@ var connector = new builder.ChatConnector({
 // Periodically refresh the token
 setInterval(() => {
     connector.getAccessToken((error) => {
-            console.log(JSON.stringify(error));
-        }, (token) => {
-            console.log(`token refreshed: ${token}`); 
-        });
-}, 30 * 60 * 1000 /* 30 minutes in milliseconds*/ );
+        console.log(JSON.stringify(error));
+    }, (token) => {
+        console.log(`token refreshed: ${token}`);
+    });
+}, 30 * 60 * 1000 /* 30 minutes in milliseconds*/);
 server.post('/api/messages', connector.listen());
 
 var bot = new builder.UniversalBot(connector, function (session) {
@@ -266,7 +266,8 @@ bot.dialog('askDayAndTime', [
                     let timeRangeEntity = builder.EntityRecognizer.findEntity(entities, 'builtin.datetimeV2.timerange');
                     let dateRangeEntity = builder.EntityRecognizer.findEntity(entities, 'builtin.datetimeV2.daterange');
 
-                    if (!dateTimeEntity && !dateEntity && !timeEntity && !dateTimeRangeEntity && !timeRangeEntity && !dateRangeEntity) {
+                    if (!dateTimeEntity && !dateEntity && !timeEntity &&
+                        !dateTimeRangeEntity && !timeRangeEntity && !dateRangeEntity) {
                         session.replaceDialog('askDayAndTime', { reprompt: true });
                     }
 
@@ -302,7 +303,8 @@ bot.dialog('askDayAndTime', [
                         // ask for timeForDay
                         session.replaceDialog('askTimeForGivenDay');
                     }
-                    if (timeEntity) {
+                    // if there is only a given time
+                    if (timeEntity && !dateRangeEntity) {
                         // returns date object
                         let reqDate = builder.EntityRecognizer.parseTime(timeEntity.entity);
                         session.userData.requestedDate = reqDate;
@@ -316,13 +318,30 @@ bot.dialog('askDayAndTime', [
                             session.replaceDialog('askDayForGivenTime');
                         }
                     }
+                    // if there is a time with a date range (this week 2pm)
+                    if (timeEntity && dateRangeEntity) {
+                        // returns date object
+                        let reqDate = builder.EntityRecognizer.parseTime(timeEntity.entity);
+                        session.userData.requestedDate = reqDate;
+                        let funcHandler = function () {
+                            // clean the date ranges
+                            let dateRange = dateRangeEntity.resolution.values;
+                            let dateRangeClean = helpers.cleanDateRange(dateRange);
+                            helpers.handleDateRange(session, dateRangeClean, { start: timeEntity.entity, end: timeEntity.entity });
+                        };
+                        // check if time is proper
+                        if (!helpers.isIncrementOfThirty(reqDate)) {
+                            session.userData.postProperCallback = funcHandler;
+                            session.replaceDialog('askProperTime');                            
+                        }
+                        funcHandler();
+                    }
 
                     // if there is a given date, and a given time range
                     if (dateEntity && timeRangeEntity) {
                         // then open dialog asking for time
                         let reqDate = builder.EntityRecognizer.parseTime(dateEntity.entity);
                         requestedDate = reqDate;
-
                         // get the time ranges
                         let timeRangeStart = timeRangeEntity.resolution.values[0].start;
                         let timeRangeEnd = timeRangeEntity.resolution.values[0].end;
@@ -354,7 +373,7 @@ bot.dialog('askDayAndTime', [
                     }
 
                     // if there is a date range detected
-                    if (dateRangeEntity && !timeRangeEntity) {
+                    if (dateRangeEntity && !timeRangeEntity && !timeEntity) {
                         // get date ranges not in the past
                         let dateRange = dateRangeEntity.resolution.values;
                         let dateRangeClean = helpers.cleanDateRange(dateRange);
@@ -397,9 +416,10 @@ bot.dialog('askProperTime', [
                                 session.replaceDialog(session.userData.postProper, { unavail: true });
                             }
                         }
-                        else {
+                        else if (session.userData.postProper) {
                             session.replaceDialog(session.userData.postProper);
                         }
+                        if (session.userData.postProperCallback) session.userData.postProperCallback();
                     }
                 }
             });
@@ -420,7 +440,7 @@ bot.dialog('askTimeForGivenDay', [
 
         if (timeslotStrings.length == 1) {
             session.send('Sorry, this day has no available timeslots. Please pick a different date/time.');
-            session.replaceDialog('askDayAndTime');
+            session.userData.replaceDialog = 'askDayAndTime';
         }
         else {
             if (args) {
@@ -436,20 +456,23 @@ bot.dialog('askTimeForGivenDay', [
         }
     },
     function (session, args) {
-        if (!args.response.entity) replaceDialog('askTimeForGivenDay', { reprompt: true })
-        if (args.response.entity == 'Pick a different time/day') {
-            session.replaceDialog('askDayAndTime');
-        }
-        else if (args.response.entity == `View days with ${new Date(session.userData.requestedDate).toLocaleTimeString('en-US', timeOptionsShort)} available`) {
-            session.replaceDialog('askDayForGivenTime');
-        }
+        if (session.userData.replaceDialog) session.replaceDialog(session.userData.replaceDialog);
         else {
-            // mark it as booked
-            let exactTime = new Date(session.userData.availableTimeslots[args.response.index]);
-            session.userData.requestedDate = exactTime;
-
-            session.endDialog();
-        }
+            if (!args.response.entity) replaceDialog('askTimeForGivenDay', { reprompt: true })
+            if (args.response.entity == 'Pick a different time/day') {
+                session.replaceDialog('askDayAndTime');
+            }
+            else if (args.response.entity == `View days with ${new Date(session.userData.requestedDate).toLocaleTimeString('en-US', timeOptionsShort)} available`) {
+                session.replaceDialog('askDayForGivenTime');
+            }
+            else {
+                // mark it as booked
+                let exactTime = new Date(session.userData.availableTimeslots[args.response.index]);
+                session.userData.requestedDate = exactTime;
+    
+                session.endDialog();
+            }
+        }      
     }
 ]);
 
@@ -473,7 +496,7 @@ bot.dialog('askDayForGivenTime', [
             timeslotString = session.userData.requestedDate.toLocaleTimeString('en-US', timeOptionsShort);
         }
         session.userData.availableDays.forEach((day) => dayStrings.push(day.toLocaleDateString('en-US', dynamicDateOptions)));
-        if (dayStrings.length > 10) dayStrings = dayStrings.slice(0,11);        
+        if (dayStrings.length > 10) dayStrings = dayStrings.slice(0, 11);
 
         dayStrings.push('Pick a different time or day');
         if (dayStrings.length == 1) {
