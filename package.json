@@ -1,7 +1,7 @@
 {
   "name": "health-chat-bot",
-  "engines" : { 
-    "node" : ">=6.11.1"
+  "engines": {
+    "node": ">=6.11.1"
   },
   "version": "1.0.0",
   "description": "Personal Health Assistant",
@@ -19,6 +19,7 @@
   "dependencies": {
     "bluebird": "^3.4.7",
     "botbuilder": "^3.8.2",
+    "botbuilder-azure": "^3.0.4",
     "dotenv-extended": "^1.0.4",
     "fuzzyset.js": "0.0.4",
     "request": "^2.79.0",
