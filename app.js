@@ -3,12 +3,21 @@
 // This loads the environment variables from the .env file
 require('dotenv-extended').load();
 
+var azure = require('botbuilder-azure');
 var builder = require('botbuilder');
 var restify = require('restify');
 var spellService = require('./spell-service');
 var FuzzySet = require('fuzzyset.js');
 var Helpers = require('./helpers');
 var helpers = new Helpers(builder);
+
+// Set up Azure CosmosDB
+var documentDbOptions = {
+    host: 'Your-Azure-DocumentDB-URI', 
+    masterKey: 'Your-Azure-DocumentDB-Key', 
+    database: 'botdocs',   
+    collection: 'botdata'
+};
 
 // Setup Restify Server
 var server = restify.createServer();
