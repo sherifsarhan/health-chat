@@ -457,20 +457,23 @@ bot.dialog('askDayForGivenTime', [
     function (session, args) {
         let dayStrings = [];
         let timeslotString;
+        let dynamicDateOptions;
         if (args && args.timeRange) {
             // get array of dates that are in between time range
             session.userData.availableDays = helpers.getAvailableDays(session, args.timeRange);
-            session.userData.availableDays.forEach((day) => dayStrings.push(day.toLocaleDateString('en-US', dateOptionsShortWithTime)));
+            dynamicDateOptions = dateOptionsShortWithTime;
             timeslotString = `${builder.EntityRecognizer.parseTime(args.timeRange.start).toLocaleTimeString('en-US', timeOptionsShort)} - 
             ${builder.EntityRecognizer.parseTime(args.timeRange.end).toLocaleTimeString('en-US', timeOptionsShort)}`;
         }
         else {
             // get array of dates which have hour & minute available
             session.userData.availableDays = helpers.getAvailableDays(session);
-            session.userData.availableDays.forEach((day) => dayStrings.push(day.toLocaleDateString('en-US', dateOptionsShort)));
+            dynamicDateOptions = dateOptionsShort;
             session.userData.requestedDate = (session.userData.requestedDate instanceof Date) ? session.userData.requestedDate : new Date(session.userData.requestedDate);
             timeslotString = session.userData.requestedDate.toLocaleTimeString('en-US', timeOptionsShort);
         }
+        session.userData.availableDays.forEach((day) => dayStrings.push(day.toLocaleDateString('en-US', dynamicDateOptions)));
+        if (dayStrings.length > 10) dayStrings = dayStrings.slice(0,11);        
 
         dayStrings.push('Pick a different time or day');
         if (dayStrings.length == 1) {
