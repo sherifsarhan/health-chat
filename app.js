@@ -14,10 +14,15 @@ var helpers = new Helpers(builder);
 // Set up Azure CosmosDB
 var documentDbOptions = {
     host: 'Your-Azure-DocumentDB-URI', 
-    masterKey: 'Your-Azure-DocumentDB-Key', 
+    masterKey: 'Your-Azure-DocumentDB-Key',
     database: 'botdocs',   
     collection: 'botdata'
 };
+
+// Create instance of DocumentDbClient
+var docDbClient = new azure.DocumentDbClient(documentDbOptions);
+// Create instance of AzureBotStorage
+var cosmosStorage = new azure.AzureBotStorage({ gzipData: false }, docDbClient);
 
 // Setup Restify Server
 var server = restify.createServer();
@@ -41,7 +46,7 @@ server.post('/api/messages', connector.listen());
 
 var bot = new builder.UniversalBot(connector, function (session) {
     session.send('Sorry, I did not understand \'%s\'. Type \'help\' if you need assistance.', session.message.text);
-});
+}).set('storage', cosmosStorage);
 
 // You can provide your own model by specifing the 'LUIS_MODEL_URL' environment variable
 // This Url can be obtained by uploading or creating your model from the LUIS portal: https://www.luis.ai/
