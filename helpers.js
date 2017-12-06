@@ -73,7 +73,11 @@ class Helpers {
 
         // get array of dates we need timeslots for day(s)
         let dates;
-        if (!singleDate) dates = this.getDates(new Date(dateRangeClean[0].start), new Date(dateRangeClean[0].end));
+        if (!singleDate) {
+            let startDate = new Date(dateRangeClean[0].start);
+            let todayDate = new Date();
+            dates = this.getDates(startDate < todayDate ? todayDate : startDate, new Date(dateRangeClean[0].end));
+        }
         else dates = [new Date(singleDate)];
 
         let allTimeslots = []
@@ -164,28 +168,30 @@ class Helpers {
             for (let month in sched[year]) {
                 for (var day in sched[year][month]) {
                     let schedDay = sched[year][month][day];
-
-                    // if supplied a timeRange
-                    if (timeRange) {
-                        for (var hour in schedDay) {
-                            for (var minute in schedDay[hour]) {
-                                if (schedDay[hour][minute] == 'available') {
-                                    // check if this available timeslot fits in requested time range
-                                    let inRange = this.isInTimeRange(timeRange.start, timeRange.end, { hour, minute });
-                                    if (inRange) {
-                                        let availableDay = new Date(year, month, day, hour, minute);
-                                        availableDays.push(availableDay);
+                    let schedDateObj = new Date(year, month, day, 0, 0, 0, 0);
+                    // if the date in the schedule is after the current date
+                    if (new Date(requestedDate).setHours(0, 0, 0, 0) <= schedDateObj) {
+                        // if supplied a timeRange
+                        if (timeRange) {
+                            for (var hour in schedDay) {
+                                for (var minute in schedDay[hour]) {
+                                    if (schedDay[hour][minute] == 'available') {
+                                        // check if this available timeslot fits in requested time range
+                                        let inRange = this.isInTimeRange(timeRange.start, timeRange.end, { hour, minute });
+                                        if (inRange) {
+                                            let availableDay = new Date(year, month, day, hour, minute);
+                                            availableDays.push(availableDay);
+                                        }
                                     }
                                 }
                             }
                         }
-                    }
-
-                    // if supplied just time (hour and minutes)
-                    if (!timeRange && (schedDay[requestedDate.getHours()]) && (schedDay[requestedDate.getHours()][requestedDate.getMinutes()])
-                        && (schedDay[requestedDate.getHours()][requestedDate.getMinutes()] == 'available')) {
-                        let availableDay = new Date(year, month, day, requestedDate.getHours(), requestedDate.getMinutes());
-                        availableDays.push(availableDay);
+                        // if supplied just time (hour and minutes)
+                        if (!timeRange && (schedDay[requestedDate.getHours()]) && (schedDay[requestedDate.getHours()][requestedDate.getMinutes()])
+                            && (schedDay[requestedDate.getHours()][requestedDate.getMinutes()] == 'available')) {
+                            let availableDay = new Date(year, month, day, requestedDate.getHours(), requestedDate.getMinutes());
+                            availableDays.push(availableDay);
+                        }
                     }
                 }
             }
