@@ -110,7 +110,10 @@ class Helpers {
       allTimeslots = allTimeslots.concat(timeslots);
     });
     session.userData.availableTimeslots = allTimeslots;
-    session.beginDialog("askTimeForGivenDay", { avail: true, dateRange: true });
+    session.replaceDialog("askTimeForGivenDay", {
+      avail: true,
+      dateRange: true
+    });
   }
 
   isTimeslotAvailable(session, requestedDate) {

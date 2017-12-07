@@ -59,7 +59,8 @@ const bot = new builder.UniversalBot(connector, session => {
 
 // You can provide your own model by specifying
 // the 'LUIS_MODEL_URL' environment variable
-// This Url can be obtained by uploading or creating your model from the LUIS portal: https://www.luis.ai/
+// This Url can be obtained by uploading or creating
+// Your model from the LUIS portal: https://www.luis.ai/
 const recognizer = new builder.LuisRecognizer(process.env.LUIS_MODEL_URL);
 bot.recognizer(recognizer);
 
@@ -595,12 +596,12 @@ bot.dialog("askProperTime", [
 ]);
 
 bot.dialog("askTimeForGivenDay", [
-  function(session, args) {
+  function(session, args, next) {
     session.userData.availableTimeslots =
       args && args.avail
         ? session.userData.availableTimeslots
         : helpers.getAvailableTimeslots(session);
-    const timeslotStrings = [];
+    let timeslotStrings = [];
     if (args && args.dateRange) {
       session.userData.availableTimeslots.forEach(timeslot =>
         timeslotStrings.push(
@@ -614,13 +615,14 @@ bot.dialog("askTimeForGivenDay", [
         )
       );
     }
+    if (timeslotStrings.length > 10)
+      timeslotStrings = timeslotStrings.slice(0, 11);
     timeslotStrings.push("Pick a different time/day");
 
     if (timeslotStrings.length === 1) {
-      session.send(
-        "Sorry, this day has no available timeslots. Please pick a different date/time."
-      );
+      session.send("Sorry, this day/date range has no available timeslots.");
       session.userData.replaceDialog = "askDayAndTime";
+      next();
     } else {
       if (args) {
         if (args.reprompt) {
@@ -649,6 +651,7 @@ bot.dialog("askTimeForGivenDay", [
   function(session, args) {
     if (session.userData.replaceDialog) {
       session.replaceDialog(session.userData.replaceDialog);
+      delete session.userData.replaceDialog;
     } else {
       if (!args.response.entity) {
         session.replaceDialog("askTimeForGivenDay", { reprompt: true });
@@ -760,7 +763,12 @@ bot.dialog("askReason", [
 bot
   .dialog("Help", session => {
     session.endDialog(
-      "Hi! Try asking me things like: \n\n 'Schedule an appointment' \n\n 'I need to see a radiologist' \n\n'I need to see a psychiatrist tomorrow between 2pm and 4pm' \n\n 'Schedule me with a dermatologist this week at 1:30pm' \n\n 'I want an appointment between october 30th and november 4th from 9am to 11:30am'"
+      "Hi! Try asking me things like: \n\n " +
+        "'Schedule an appointment' \n\n " +
+        "I need to see a radiologist' \n\n" +
+        "'I need to see a psychiatrist tomorrow between 2pm and 4pm' \n\n " +
+        "'Schedule me with a dermatologist this week at 1:30pm' \n\n " +
+        "'I want an appointment between october 30th and november 4th from 9am to 11:30am'"
     );
   })
   .triggerAction({
