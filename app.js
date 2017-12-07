@@ -133,7 +133,7 @@ bot.dialog('scheduleAppointment', [
 
         // if there's no day ex. tomorrow
         // open dialog asking what days for that time
-        if (session.userData.timeEntity) {
+        if (session.userData.timeEntity && !session.userData.dateRangeEntity) {
             // then open dialog asking for day
             let reqDate = builder.EntityRecognizer.parseTime(session.userData.timeEntity.entity);
             session.userData.requestedDate = reqDate;
@@ -146,6 +146,27 @@ bot.dialog('scheduleAppointment', [
                 // ask for dayForTime
                 session.beginDialog('askDayForGivenTime');
             }
+        }
+
+        // if there is a time with a date range (this week 2pm)
+        if (session.userData.timeEntity && session.userData.dateRangeEntity) {
+            let timeEntity = session.userData.timeEntity;
+            let dateRangeEntity = session.userData.dateRangeEntity;
+            // returns date object
+            let reqDate = builder.EntityRecognizer.parseTime(timeEntity.entity);
+            session.userData.requestedDate = reqDate;
+            let funcHandler = function () {
+                // clean the date ranges
+                let dateRange = dateRangeEntity.resolution.values;
+                let dateRangeClean = helpers.cleanDateRange(dateRange);
+                helpers.handleDateRange(session, dateRangeClean, { start: timeEntity.entity, end: timeEntity.entity });
+            };
+            // check if time is proper
+            if (!helpers.isIncrementOfThirty(reqDate)) {
+                session.userData.postProperCallback = funcHandler;
+                session.replaceDialog('askProperTime');                            
+            }
+            funcHandler();
         }
 
         // if there are both date & time
@@ -200,7 +221,7 @@ bot.dialog('scheduleAppointment', [
         }
 
         // if there is a date range detected
-        if (session.userData.dateRangeEntity && !session.userData.timeRangeEntity) {
+        if (session.userData.dateRangeEntity && !session.userData.timeRangeEntity && !session.userData.timeEntity) {
             // get date ranges not in the past
             let dateRange = session.userData.dateRangeEntity.resolution.values;
             let dateRangeClean = helpers.cleanDateRange(dateRange);
