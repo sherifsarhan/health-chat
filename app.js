@@ -620,7 +620,7 @@ bot.dialog("askTimeForGivenDay", [
     timeslotStrings.push("Pick a different time/day");
 
     if (timeslotStrings.length === 1) {
-      session.send("Sorry, this day/date range has no available timeslots.");
+      session.send("Sorry, there aren't any available for that.");
       session.userData.replaceDialog = "askDayAndTime";
       next();
     } else {
