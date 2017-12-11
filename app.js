@@ -329,7 +329,7 @@ bot
   ])
   .triggerAction({
     matches: "ScheduleAppointment",
-    intentThreshold: 0.75
+    intentThreshold: 0.79
   });
 
 bot.dialog("askDoctorType", [
@@ -370,27 +370,27 @@ bot.dialog("askDayAndTime", [
         if (err) console.log(err.stack);
         if (entities) {
           // only one of these will be not null
-          const dateTimeEntity = builder.EntityRecognizer.findEntity(
+          let dateTimeEntity = builder.EntityRecognizer.findEntity(
             entities,
             "builtin.datetimeV2.datetime"
           );
-          const dateEntity = builder.EntityRecognizer.findEntity(
+          let dateEntity = builder.EntityRecognizer.findEntity(
             entities,
             "builtin.datetimeV2.date"
           );
-          const timeEntity = builder.EntityRecognizer.findEntity(
+          let timeEntity = builder.EntityRecognizer.findEntity(
             entities,
             "builtin.datetimeV2.time"
           );
-          const dateTimeRangeEntity = builder.EntityRecognizer.findEntity(
+          let dateTimeRangeEntity = builder.EntityRecognizer.findEntity(
             entities,
             "builtin.datetimeV2.datetimerange"
           );
-          const timeRangeEntity = builder.EntityRecognizer.findEntity(
+          let timeRangeEntity = builder.EntityRecognizer.findEntity(
             entities,
             "builtin.datetimeV2.timerange"
           );
-          const dateRangeEntity = builder.EntityRecognizer.findEntity(
+          let dateRangeEntity = builder.EntityRecognizer.findEntity(
             entities,
             "builtin.datetimeV2.daterange"
           );
@@ -410,7 +410,7 @@ bot.dialog("askDayAndTime", [
 
           if (dateTimeEntity) {
             // returns date object
-            const reqDate = new Date(dateTimeEntity.resolution.values[0].value);
+            let reqDate = new Date(dateTimeEntity.resolution.values[0].value);
             session.userData.requestedDate = reqDate;
             // check if time is not proper
             if (!helpers.isIncrementOfThirty(reqDate)) {
@@ -429,11 +429,11 @@ bot.dialog("askDayAndTime", [
           }
           if (dateEntity && !timeRangeEntity) {
             // ensure date not in past
-            const cleanDate = helpers.cleanDateRange(
+            let cleanDate = helpers.cleanDateRange(
               dateEntity.resolution.values
             );
             // returns date object
-            const reqDate = new Date(cleanDate[0].value);
+            let reqDate = new Date(cleanDate[0].value);
             session.userData.requestedDate = reqDate;
             // ask for timeForDay
             session.replaceDialog("askTimeForGivenDay");
@@ -441,9 +441,7 @@ bot.dialog("askDayAndTime", [
           // if there is only a given time
           if (timeEntity && !dateRangeEntity) {
             // returns date object
-            const reqDate = builder.EntityRecognize.parseTime(
-              timeEntity.entity
-            );
+            let reqDate = builder.EntityRecognizer.parseTime(timeEntity.entity);
             session.userData.requestedDate = reqDate;
             // check if time is proper
             if (!helpers.isIncrementOfThirty(reqDate)) {
@@ -457,14 +455,12 @@ bot.dialog("askDayAndTime", [
           // if there is a time with a date range (this week 2pm)
           if (timeEntity && dateRangeEntity) {
             // returns date object
-            const reqDate = builder.EntityRecognizer.parseTime(
-              timeEntity.entity
-            );
+            let reqDate = builder.EntityRecognizer.parseTime(timeEntity.entity);
             session.userData.requestedDate = reqDate;
             const funcHandler = function() {
               // clean the date ranges
-              const dateRange = dateRangeEntity.resolution.values;
-              const dateRangeClean = helpers.cleanDateRange(dateRange);
+              let dateRange = dateRangeEntity.resolution.values;
+              let dateRangeClean = helpers.cleanDateRange(dateRange);
               helpers.handleDateRange(session, dateRangeClean, {
                 start: timeEntity.entity,
                 end: timeEntity.entity
@@ -481,13 +477,11 @@ bot.dialog("askDayAndTime", [
           // if there is a given date, and a given time range
           if (dateEntity && timeRangeEntity) {
             // then open dialog asking for time
-            const reqDate = builder.EntityRecognizer.parseTime(
-              dateEntity.entity
-            );
+            let reqDate = builder.EntityRecognizer.parseTime(dateEntity.entity);
             session.userData.requestedDate = reqDate;
             // get the time ranges
-            const timeRangeStart = timeRangeEntity.resolution.values[0].start;
-            const timeRangeEnd = timeRangeEntity.resolution.values[0].end;
+            let timeRangeStart = timeRangeEntity.resolution.values[0].start;
+            let timeRangeEnd = timeRangeEntity.resolution.values[0].end;
             helpers.handleDateRange(
               session,
               null,
@@ -497,18 +491,18 @@ bot.dialog("askDayAndTime", [
           }
 
           if (dateTimeRangeEntity) {
-            const dateRange = dateTimeRangeEntity.resolution.values;
-            const dateRangeClean = helpers.cleanDateRange(dateRange);
+            let dateRange = dateTimeRangeEntity.resolution.values;
+            let dateRangeClean = helpers.cleanDateRange(dateRange);
             helpers.handleDateTimeRange(session, dateRangeClean);
           }
 
           if (dateRangeEntity && timeRangeEntity) {
             // clean the date ranges
-            const dateRange = dateRangeEntity.resolution.values;
-            const dateRangeClean = helpers.cleanDateRange(dateRange);
+            let dateRange = dateRangeEntity.resolution.values;
+            let dateRangeClean = helpers.cleanDateRange(dateRange);
             // get the time ranges
-            const timeRangeStart = timeRangeEntity.resolution.values[0].start;
-            const timeRangeEnd = timeRangeEntity.resolution.values[0].end;
+            let timeRangeStart = timeRangeEntity.resolution.values[0].start;
+            let timeRangeEnd = timeRangeEntity.resolution.values[0].end;
             helpers.handleDateRange(session, dateRangeClean, {
               start: timeRangeStart,
               end: timeRangeEnd
@@ -517,8 +511,8 @@ bot.dialog("askDayAndTime", [
 
           // if there is a time range detected
           if (timeRangeEntity && !dateEntity && !dateRangeEntity) {
-            const timeRangeStart = timeRangeEntity.resolution.values[0].start;
-            const timeRangeEnd = timeRangeEntity.resolution.values[0].end;
+            let timeRangeStart = timeRangeEntity.resolution.values[0].start;
+            let timeRangeEnd = timeRangeEntity.resolution.values[0].end;
             session.beginDialog("askDayForGivenTime", {
               timeRange: { start: timeRangeStart, end: timeRangeEnd }
             });
@@ -527,8 +521,8 @@ bot.dialog("askDayAndTime", [
           // if there is a date range detected
           if (dateRangeEntity && !timeRangeEntity && !timeEntity) {
             // get date ranges not in the past
-            const dateRange = dateRangeEntity.resolution.values;
-            const dateRangeClean = helpers.cleanDateRange(dateRange);
+            let dateRange = dateRangeEntity.resolution.values;
+            let dateRangeClean = helpers.cleanDateRange(dateRange);
 
             // now have a clean date range
             // find all available timeslots in that daterange
