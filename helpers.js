@@ -207,11 +207,13 @@ class Helpers {
       end instanceof Date ? end : this.builder.EntityRecognizer.parseTime(end);
 
     let afterReqStart =
-      time.hour > start.getHours() ||
-      (time.hour === start.getHours() && time.minute >= start.getMinutes());
+      parseInt(time.hour) > start.getHours() ||
+      (parseInt(time.hour) === start.getHours() &&
+        parseInt(time.minute) >= start.getMinutes());
     let beforeReqEnd =
-      time.hour < end.getHours() ||
-      (time.hour === end.getHours() && time.minute <= end.getMinutes());
+      parseInt(time.hour) < end.getHours() ||
+      (parseInt(time.hour) <= end.getHours() &&
+        parseInt(time.minute) === end.getMinutes());
     return afterReqStart && beforeReqEnd;
   }
 
