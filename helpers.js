@@ -287,6 +287,33 @@ class Helpers {
   isIncrementOfThirty(time) {
     return time.getMinutes() === 0 || time.getMinutes() === 30;
   }
+
+  generateScheduleDB() {
+    var doctors = [
+      "Radiologist",
+      "Psychiatrist",
+      "Dermatologist",
+      "Cardiologist"
+    ];
+    var dates = {};
+    doctors.forEach(function(doctor) {
+      dates[doctor] = { "2018": {} };
+      for (let month = 0; month < 12; month++) {
+        dates[doctor]["2018"][month] = {};
+        for (let day = 1; day < 31; day++) {
+          dates[doctor]["2018"][month][day] = {};
+          for (let hour = 0; hour < 5; hour++) {
+            let randHour = Math.floor(Math.random() * (17 - 8 + 1) + 8);
+            dates[doctor]["2018"][month][day][randHour] = {};
+            dates[doctor]["2018"][month][day][randHour]["0"] =
+              Math.random() < 0.5 ? "booked" : "available";
+            dates[doctor]["2018"][month][day][randHour]["30"] =
+              Math.random() < 0.5 ? "booked" : "available";
+          }
+        }
+      }
+    });
+  }
 }
 
 module.exports = Helpers;
