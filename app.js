@@ -706,7 +706,7 @@ bot.dialog("askDayForGivenTime", [
     session.userData.availableDays.forEach(day =>
       dayStrings.push(day.toLocaleDateString("en-US", dynamicDateOptions))
     );
-    if (dayStrings.length > 10) dayStrings = dayStrings.slice(0, 11);
+    if (dayStrings.length > 3) dayStrings = dayStrings.slice(0, 4);
 
     dayStrings.push("Pick a different time or day");
     if (dayStrings.length === 1) {
